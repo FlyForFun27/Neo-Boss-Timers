@@ -73,7 +73,6 @@
             padding-bottom: 5px;
         }
 
-        /* Card Styling */
         .card {
             background-color: var(--bg-card);
             border: 1px solid var(--border-color);
@@ -81,7 +80,6 @@
             padding: 15px;
             margin-bottom: 15px;
             position: relative;
-            transition: border-color 0.3s;
         }
 
         .card.active {
@@ -180,12 +178,11 @@
 
         function startCountdown(targetDateObj, timerElement, cardElement) {
             const targetTime = targetDateObj.getTime();
-            const spawnEndTime = targetTime + (5 * 60 * 1000); // 5 minutes after spawn
+            const spawnEndTime = targetTime + (5 * 60 * 1000); 
 
             const interval = setInterval(() => {
                 const now = new Date().getTime();
                 
-                // Phase 1: Counting down to spawn
                 if (now < targetTime) {
                     const distance = targetTime - now;
                     let h = Math.floor((distance / (1000 * 60 * 60)));
@@ -196,7 +193,6 @@
                     timerElement.classList.remove('spawn-text');
                     cardElement.classList.add('active');
                 } 
-                // Phase 2: Spawn active (5 min window)
                 else if (now >= targetTime && now < spawnEndTime) {
                     const distance = spawnEndTime - now;
                     let m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
@@ -207,13 +203,9 @@
                     cardElement.classList.remove('active');
                     cardElement.classList.add('spawned');
                 } 
-                // Phase 3: Expired
                 else {
                     clearInterval(interval);
-                    timerElement.innerHTML = "00m 00s";
-                    timerElement.classList.remove('spawn-text');
-                    cardElement.classList.remove('spawned');
-                    cardElement.style.opacity = "0.4"; // Dim old bosses
+                    cardElement.remove(); // REMOVE CARD ONCE EXPIRED
                 }
             }, 1000);
         }
@@ -223,38 +215,48 @@
                 const response = await fetch(sheetUrl);
                 const data = await response.text();
                 const rows = data.split('\n').slice(1);
-                const todayName = daysOfWeek[new Date().getDay()].toLowerCase();
+                const now = new Date();
+                const todayName = daysOfWeek[now.getDay()].toLowerCase();
 
                 // Clear current lists
                 document.querySelectorAll('.boss-list').forEach(el => el.innerHTML = '');
 
-                rows.forEach(row => {
-                    if (!row.trim()) return;
+                // Filter and sort the data before creating cards
+                let activeData = rows.map(row => {
+                    if (!row.trim()) return null;
                     let cols = row.split(',');
                     if (cols[0].trim() === '') cols.shift();
-                    if (cols.length < 4) return;
+                    if (cols.length < 4) return null;
 
-                    const region = cols[0].trim().toLowerCase();
-                    const name = cols[1].trim();
-                    const day = cols[2].trim().toLowerCase();
-                    const time = cols[3].trim();
+                    return {
+                        region: cols[0].trim().toLowerCase(),
+                        name: cols[1].trim(),
+                        day: cols[2].trim().toLowerCase(),
+                        timeStr: cols[3].trim(),
+                        dateObj: parseTimeToToday(cols[3].trim())
+                    };
+                }).filter(item => {
+                    if (!item) return false;
+                    // Keep if it's today AND (it's in the future OR it's within the 5-min spawn window)
+                    const spawnEndTime = item.dateObj.getTime() + (5 * 60 * 1000);
+                    return item.day === todayName && now.getTime() < spawnEndTime;
+                });
 
-                    if (day === todayName) {
-                        const targetCol = document.querySelector(`#col-${region.replace('ritual', 'rituals')} .boss-list`);
-                        if (targetCol) {
-                            const dateObj = parseTimeToToday(time);
-                            createBossCard(targetCol, name, time, dateObj);
-                        }
+                // Sort by time (Earliest first)
+                activeData.sort((a, b) => a.dateObj - b.dateObj);
+
+                activeData.forEach(item => {
+                    const targetCol = document.querySelector(`#col-${item.region.replace('ritual', 'rituals')} .boss-list`);
+                    if (targetCol) {
+                        createBossCard(targetCol, item.name, item.dateObj);
                     }
                 });
             } catch (err) { console.error("Fetch error:", err); }
         }
 
-        function createBossCard(container, name, time, dateObj) {
+        function createBossCard(container, name, dateObj) {
             const card = document.createElement('div');
             card.className = 'card';
-            
-            // Format time for display
             const displayTime = dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
             card.innerHTML = `
@@ -263,7 +265,6 @@
                         <div class="boss-name">${name}</div>
                         <div class="boss-time">${daysOfWeek[dateObj.getDay()].substring(0, 3)}, ${displayTime}</div>
                     </div>
-                    <div class="status">SCHEDULED</div>
                 </div>
                 <div class="timer-box">--m --s</div>
             `;
@@ -277,8 +278,8 @@
             updateClock();
             setInterval(updateClock, 1000);
             loadSheetData();
-            // Refresh list every 10 mins to catch any sheet updates
-            setInterval(loadSheetData, 600000);
+            // Refresh every 5 mins to sync with spreadsheet/day changes
+            setInterval(loadSheetData, 300000);
         };
     </script>
 </body>
