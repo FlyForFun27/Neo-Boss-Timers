@@ -12,6 +12,7 @@
             --text-main: #ffffff;
             --text-muted: #a0a0a0;
             --accent-purple: #9d4edd;
+            --accent-red: #FF6961;
             --border-color: #333333;
         }
 
@@ -24,7 +25,6 @@
             height: 100vh;
         }
 
-        /* Main Content Styling */
         .main-content {
             flex-grow: 1;
             display: flex;
@@ -51,7 +51,6 @@
             padding: 30px;
         }
 
-        /* Grid Layout for Columns */
         .grid-container {
             display: flex;
             gap: 20px;
@@ -60,7 +59,7 @@
 
         .column {
             flex: 1;
-            min-width: 250px;
+            min-width: 280px;
         }
 
         .column-title {
@@ -70,6 +69,8 @@
             color: var(--text-muted);
             margin-bottom: 15px;
             letter-spacing: 1px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 5px;
         }
 
         /* Card Styling */
@@ -80,10 +81,15 @@
             padding: 15px;
             margin-bottom: 15px;
             position: relative;
+            transition: border-color 0.3s;
         }
 
         .card.active {
             border-left: 3px solid var(--accent-purple);
+        }
+
+        .card.spawned {
+            border-left: 3px solid var(--accent-red);
         }
 
         .card-header {
@@ -104,22 +110,18 @@
             margin-top: 4px;
         }
 
-        .status {
-            font-size: 0.7rem;
-            font-weight: bold;
-            color: var(--text-muted);
-        }
-
-        /* Timer display */
         .timer-box {
             background-color: #1a1a1a;
             text-align: center;
-            padding: 15px;
+            padding: 12px;
             border-radius: 4px;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: var(--accent-purple);
             font-weight: bold;
-            margin-bottom: 10px;
+        }
+
+        .spawn-text {
+            color: var(--accent-red);
         }
     </style>
 </head>
@@ -135,73 +137,26 @@
 
         <div class="dashboard">
             <div class="grid-container">
-                <div class="column">
-                    <div class="column-title" id="region-1">Dawncrest</div>
-
-                    <div class="card active">
-                        <div class="card-header">
-                            <div>
-                                <div class="boss-name" id="name-1">Waiting for data...</div>
-                                <div class="boss-time" id="time-1">--:--</div>
-                            </div>
-                            <div class="status" style="color: white;">CURRENT</div>
-                        </div>
-                        <div class="timer-box" id="timer-1">
-                            --m --s
-                        </div>
-                    </div>
+                <div class="column" id="col-dawncrest">
+                    <div class="column-title">Dawncrest</div>
+                    <div class="boss-list"></div>
                 </div>
 
-                <div class="column">
-                    <div class="column-title" id="region-2">Silverfrost</div>
-
-                    <div class="card active">
-                        <div class="card-header">
-                            <div>
-                                <div class="boss-name" id="name-2">Waiting for data...</div>
-                                <div class="boss-time" id="time-2">--:--</div>
-                            </div>
-                            <div class="status" style="color: white;">CURRENT</div>
-                        </div>
-                        <div class="timer-box" id="timer-2">
-                            --m --s
-                        </div>
-                    </div>
+                <div class="column" id="col-silverfrost">
+                    <div class="column-title">Silverfrost</div>
+                    <div class="boss-list"></div>
                 </div>
 
-                <div class="column">
-                    <div class="column-title" id="region-3">Rituals</div>
-
-                    <div class="card active">
-                        <div class="card-header">
-                            <div>
-                                <div class="boss-name" id="name-3">Waiting for data...</div>
-                                <div class="boss-time" id="time-3">--:--</div>
-                            </div>
-                            <div class="status" style="color: white;">CURRENT</div>
-                        </div>
-                        <div class="timer-box" id="timer-3">
-                            --m --s
-                        </div>
-                    </div>
+                <div class="column" id="col-rituals">
+                    <div class="column-title">Rituals</div>
+                    <div class="boss-list"></div>
                 </div>
-
             </div>
         </div>
     </main>
 
     <script>
-        // Your live Google Sheet CSV link
         const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtRlBFHRViiLrjzmlEvxgI8-1UNwfrJWJU7fsej4eO6dLOEEzozvd_03KmgWhAIZonrzb2QupMcvVK/pub?output=csv';
-
-        // Map your spreadsheet region names to the column numbers in HTML
-        const regionMap = {
-            'dawncrest': 1,
-            'silverfrost': 2,
-            'ritual': 3,
-            'rituals': 3 // Catching both plural and singular just in case
-        };
-
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
         function updateClock() {
@@ -209,27 +164,11 @@
             let hours = now.getHours();
             let minutes = now.getMinutes();
             const ampm = hours >= 12 ? 'PM' : 'AM';
-            
-            hours = hours % 12;
-            hours = hours ? hours : 12; 
+            hours = hours % 12 || 12;
             minutes = minutes < 10 ? '0' + minutes : minutes;
-            
             document.getElementById('live-clock').textContent = hours + ':' + minutes + ' ' + ampm;
         }
 
-        function formatDisplayTime(dateObj) {
-            let hours = dateObj.getHours();
-            let minutes = dateObj.getMinutes();
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            
-            hours = hours % 12;
-            hours = hours ? hours : 12;
-            minutes = minutes < 10 ? '0' + minutes : minutes;
-            
-            return `${hours}:${minutes} ${ampm}`;
-        }
-
-        // Parse HH:MM (and gracefully handle HH:MM:SS if Google Sheets adds seconds)
         function parseTimeToToday(timeStr) {
             const parts = timeStr.trim().split(':');
             const target = new Date();
@@ -239,32 +178,43 @@
             return target;
         }
 
-        function startCountdown(targetDateObj, displayElementId) {
+        function startCountdown(targetDateObj, timerElement, cardElement) {
             const targetTime = targetDateObj.getTime();
-            const display = document.getElementById(displayElementId);
-            
-            if(display.timerInterval) clearInterval(display.timerInterval);
+            const spawnEndTime = targetTime + (5 * 60 * 1000); // 5 minutes after spawn
 
-            display.timerInterval = setInterval(function () {
+            const interval = setInterval(() => {
                 const now = new Date().getTime();
-                const distance = targetTime - now;
-
-                if (distance <= 0) {
-                    clearInterval(display.timerInterval);
-                    display.textContent = "00m 00s";
-                    return;
+                
+                // Phase 1: Counting down to spawn
+                if (now < targetTime) {
+                    const distance = targetTime - now;
+                    let h = Math.floor((distance / (1000 * 60 * 60)));
+                    let m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    let s = Math.floor((distance % (1000 * 60)) / 1000);
+                    
+                    timerElement.innerHTML = `${h > 0 ? h + 'h ' : ''}${m < 10 ? '0' + m : m}m ${s < 10 ? '0' + s : s}s`;
+                    timerElement.classList.remove('spawn-text');
+                    cardElement.classList.add('active');
+                } 
+                // Phase 2: Spawn active (5 min window)
+                else if (now >= targetTime && now < spawnEndTime) {
+                    const distance = spawnEndTime - now;
+                    let m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    let s = Math.floor((distance % (1000 * 60)) / 1000);
+                    
+                    timerElement.innerHTML = `Spawn in ${m}m ${s < 10 ? '0' + s : s}s`;
+                    timerElement.classList.add('spawn-text');
+                    cardElement.classList.remove('active');
+                    cardElement.classList.add('spawned');
+                } 
+                // Phase 3: Expired
+                else {
+                    clearInterval(interval);
+                    timerElement.innerHTML = "00m 00s";
+                    timerElement.classList.remove('spawn-text');
+                    cardElement.classList.remove('spawned');
+                    cardElement.style.opacity = "0.4"; // Dim old bosses
                 }
-
-                let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                let seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-                let timeString = "";
-                if (hours > 0) timeString += hours + "h ";
-                timeString += (minutes < 10 ? "0" + minutes : minutes) + "m ";
-                timeString += (seconds < 10 ? "0" + seconds : seconds) + "s";
-
-                display.textContent = timeString;
             }, 1000);
         }
 
@@ -272,85 +222,63 @@
             try {
                 const response = await fetch(sheetUrl);
                 const data = await response.text();
-                
-                const rows = data.split('\n').slice(1); 
-                const now = new Date();
-                const todayName = daysOfWeek[now.getDay()].toLowerCase();
+                const rows = data.split('\n').slice(1);
+                const todayName = daysOfWeek[new Date().getDay()].toLowerCase();
 
-                let todaysBosses = { 1: [], 2: [], 3: [] };
+                // Clear current lists
+                document.querySelectorAll('.boss-list').forEach(el => el.innerHTML = '');
 
                 rows.forEach(row => {
                     if (!row.trim()) return;
-                    
-                    let columns = row.split(',');
-                    
-                    // Bulletproof fix: If there is an empty column at the very start, remove it so the array shifts back to normal
-                    if (columns.length > 0 && columns[0].trim() === '') {
-                        columns.shift();
-                    }
+                    let cols = row.split(',');
+                    if (cols[0].trim() === '') cols.shift();
+                    if (cols.length < 4) return;
 
-                    if (columns.length < 4) return;
+                    const region = cols[0].trim().toLowerCase();
+                    const name = cols[1].trim();
+                    const day = cols[2].trim().toLowerCase();
+                    const time = cols[3].trim();
 
-                    const regionText = columns[0].trim().toLowerCase();
-                    const bossNameText = columns[1].trim();
-                    const weekdayText = columns[2].trim().toLowerCase();
-                    const timeText = columns[3].trim(); 
-
-                    // Check if the row is for today
-                    if (weekdayText === todayName) {
-                        const colId = regionMap[regionText];
-                        if (colId) {
-                            todaysBosses[colId].push({
-                                name: bossNameText,
-                                dateObj: parseTimeToToday(timeText)
-                            });
+                    if (day === todayName) {
+                        const targetCol = document.querySelector(`#col-${region.replace('ritual', 'rituals')} .boss-list`);
+                        if (targetCol) {
+                            const dateObj = parseTimeToToday(time);
+                            createBossCard(targetCol, name, time, dateObj);
                         }
                     }
                 });
-
-                // Find the next upcoming boss for each region
-                for (let colId = 1; colId <= 3; colId++) {
-                    const regionBosses = todaysBosses[colId];
-                    
-                    regionBosses.sort((a, b) => a.dateObj - b.dateObj);
-
-                    let nextBoss = null;
-
-                    for (let boss of regionBosses) {
-                        if (boss.dateObj.getTime() > now.getTime()) {
-                            nextBoss = boss;
-                            break;
-                        }
-                    }
-
-                    if (!nextBoss && regionBosses.length > 0) {
-                        nextBoss = regionBosses[regionBosses.length - 1];
-                    }
-
-                    if (nextBoss) {
-                        document.getElementById(`name-${colId}`).textContent = nextBoss.name;
-                        const dayLabel = daysOfWeek[nextBoss.dateObj.getDay()].substring(0, 3);
-                        document.getElementById(`time-${colId}`).textContent = `${dayLabel}, ${formatDisplayTime(nextBoss.dateObj)}`;
-                        
-                        startCountdown(nextBoss.dateObj, `timer-${colId}`);
-                    } else {
-                        document.getElementById(`name-${colId}`).textContent = "No bosses today";
-                        document.getElementById(`time-${colId}`).textContent = "--:--";
-                        document.getElementById(`timer-${colId}`).textContent = "--m --s";
-                    }
-                }
-
-            } catch (error) {
-                console.error('Error fetching Google Sheet data:', error);
-            }
+            } catch (err) { console.error("Fetch error:", err); }
         }
 
-        window.onload = function () {
+        function createBossCard(container, name, time, dateObj) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            // Format time for display
+            const displayTime = dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+            card.innerHTML = `
+                <div class="card-header">
+                    <div>
+                        <div class="boss-name">${name}</div>
+                        <div class="boss-time">${daysOfWeek[dateObj.getDay()].substring(0, 3)}, ${displayTime}</div>
+                    </div>
+                    <div class="status">SCHEDULED</div>
+                </div>
+                <div class="timer-box">--m --s</div>
+            `;
+            
+            container.appendChild(card);
+            const timerBox = card.querySelector('.timer-box');
+            startCountdown(dateObj, timerBox, card);
+        }
+
+        window.onload = () => {
             updateClock();
             setInterval(updateClock, 1000);
-            
             loadSheetData();
-            setInterval(loadSheetData, 300000); 
+            // Refresh list every 10 mins to catch any sheet updates
+            setInterval(loadSheetData, 600000);
         };
     </script>
 </body>
