@@ -154,27 +154,6 @@
             font-weight: bold;
             margin-bottom: 10px;
         }
-
-        /* Footer buttons inside card */
-        .card-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .icon-group button {
-            background: none;
-            border: 1px solid var(--border-color);
-            color: var(--text-muted);
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-right: 5px;
-        }
-
-        .icon-group button:hover {
-            background-color: var(--border-color);
-        }
     </style>
 </head>
 <body>
@@ -189,8 +168,8 @@
     <main class="main-content">
         <header class="header">
             <div>
-                <span style="margin-right: 20px;">12:17 PM</span>
-                <button style="background:var(--accent-purple); color:white; border:none; padding:5px 10px;">EU</button>
+                <span id="live-clock" style="margin-right: 20px;">12:17 PM</span>
+                <button style="background:var(--accent-purple); color:white; border:none; padding:5px 10px; border-radius: 4px; cursor: pointer;">EU</button>
             </div>
         </header>
 
@@ -205,7 +184,6 @@
                         <div class="card-header">
                             <div>
                                 <div class="boss-name">Divine Fist Wasteland ✔</div>
-                                <div class="boss-time">Fri, 11:47 AM</div>
                             </div>
                             <div class="status">PREVIOUS</div>
                         </div>
@@ -222,117 +200,8 @@
                         <div class="timer-box" id="timer-1">
                             --m --s
                         </div>
-                        <div class="card-footer">
-                            <div class="icon-group">
-                                <button>🔇</button>
-                                <button>⚙</button>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
                 <div class="column">
                     <div class="column-title">Silverfrost</div>
-                    
-                    <div class="card">
-                        <div class="card-header">
-                            <div>
-                                <div class="boss-name">Skypetal Plains ✔</div>
-                                <div class="boss-time">Fri, 11:34 AM</div>
-                            </div>
-                            <div class="status">PREVIOUS</div>
-                        </div>
-                    </div>
-
-                    <div class="card active">
-                        <div class="card-header">
-                            <div>
-                                <div class="boss-name">Skypetal Plains ✔</div>
-                                <div class="boss-time">Fri, 1:04 PM</div>
-                            </div>
-                            <div class="status" style="color: white;">CURRENT</div>
-                        </div>
-                        <div class="timer-box" id="timer-2">
-                            --m --s
-                        </div>
-                        <div class="card-footer">
-                            <div class="icon-group">
-                                <button>🔇</button>
-                                <button>⚙</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="column">
-                    <div class="column-title">Rituals</div>
-                    
-                    <div class="card">
-                        <div class="card-header">
-                            <div>
-                                <div class="boss-name">Fishing Lodge ✔</div>
-                                <div class="boss-time">Fri, 2:46 AM</div>
-                            </div>
-                            <div class="status">PREVIOUS</div>
-                        </div>
-                    </div>
-
-                    <div class="card active">
-                        <div class="card-header">
-                            <div>
-                                <div class="boss-name">Rural Outfitters ✔</div>
-                                <div class="boss-time">Fri, 7:30 PM</div>
-                            </div>
-                            <div class="status" style="color: white;">CURRENT</div>
-                        </div>
-                        <div class="timer-box" id="timer-3">
-                            --m --s
-                        </div>
-                        <div class="card-footer">
-                            <div class="icon-group">
-                                <button>🔇</button>
-                                <button>⚙</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </main>
-
-    <script>
-        // Simple function to start a countdown
-        function startTimer(durationInMinutes, displayElementId) {
-            let timer = durationInMinutes * 60;
-            const display = document.getElementById(displayElementId);
-
-            setInterval(function () {
-                let hours = parseInt(timer / 3600, 10);
-                let minutes = parseInt((timer % 3600) / 60, 10);
-                let seconds = parseInt(timer % 60, 10);
-
-                // Format to show leading zeros
-                let timeString = "";
-                if (hours > 0) timeString += hours + "h ";
-                timeString += (minutes < 10 ? "0" + minutes : minutes) + "m ";
-                timeString += (seconds < 10 ? "0" + seconds : seconds) + "s";
-
-                display.textContent = timeString;
-
-                if (--timer < 0) {
-                    timer = 0; // Stop at zero
-                    display.textContent = "00m 00s";
-                }
-            }, 1000);
-        }
-
-        // Initialize timers
-        window.onload = function () {
-            startTimer(55.96, 'timer-1'); // Dawncrest (~55m)
-            startTimer(46.96, 'timer-2'); // Silverfrost (~46m)
-            startTimer(432.96, 'timer-3'); // Rituals (~7h 12m)
-        };
-    </script>
-</body>
-</html>
