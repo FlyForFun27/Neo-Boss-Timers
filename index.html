@@ -64,8 +64,8 @@
         }
 
         .column-title {
-            font-size: 1.2rem; /* Increased text size */
-            font-weight: 600; /* Added slight boldness for hierarchy */
+            font-size: 1.2rem;
+            font-weight: 600;
             text-transform: uppercase;
             color: var(--text-muted);
             margin-bottom: 15px;
@@ -136,13 +136,13 @@
         <div class="dashboard">
             <div class="grid-container">
                 <div class="column">
-                    <div class="column-title">Dawncrest</div>
+                    <div class="column-title" id="region-1">Dawncrest</div>
 
                     <div class="card active">
                         <div class="card-header">
                             <div>
-                                <div class="boss-name">Forest of Wisdom</div>
-                                <div class="boss-time">Fri, 1:13 PM</div>
+                                <div class="boss-name" id="name-1">Waiting for data...</div>
+                                <div class="boss-time" id="time-1">--:--</div>
                             </div>
                             <div class="status" style="color: white;">CURRENT</div>
                         </div>
@@ -153,13 +153,13 @@
                 </div>
 
                 <div class="column">
-                    <div class="column-title">Silverfrost</div>
+                    <div class="column-title" id="region-2">Silverfrost</div>
 
                     <div class="card active">
                         <div class="card-header">
                             <div>
-                                <div class="boss-name">Skypetal Plains</div>
-                                <div class="boss-time">Fri, 1:04 PM</div>
+                                <div class="boss-name" id="name-2">Waiting for data...</div>
+                                <div class="boss-time" id="time-2">--:--</div>
                             </div>
                             <div class="status" style="color: white;">CURRENT</div>
                         </div>
@@ -170,13 +170,13 @@
                 </div>
 
                 <div class="column">
-                    <div class="column-title">Rituals</div>
+                    <div class="column-title" id="region-3">Rituals</div>
 
                     <div class="card active">
                         <div class="card-header">
                             <div>
-                                <div class="boss-name">Rural Outfitters</div>
-                                <div class="boss-time">Fri, 7:30 PM</div>
+                                <div class="boss-name" id="name-3">Waiting for data...</div>
+                                <div class="boss-time" id="time-3">--:--</div>
                             </div>
                             <div class="status" style="color: white;">CURRENT</div>
                         </div>
@@ -191,59 +191,168 @@
     </main>
 
     <script>
-        // Function to run the live clock in the top right
+        // Your live Google Sheet CSV link
+        const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtRlBFHRViiLrjzmlEvxgI8-1UNwfrJWJU7fsej4eO6dLOEEzozvd_03KmgWhAIZonrzb2QupMcvVK/pub?output=csv';
+
+        // Map your spreadsheet region names to the column numbers in HTML
+        const regionMap = {
+            'dawncrest': 1,
+            'silverfrost': 2,
+            'ritual': 3,
+            'rituals': 3 // Catching both plural and singular just in case
+        };
+
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
         function updateClock() {
             const now = new Date();
             let hours = now.getHours();
             let minutes = now.getMinutes();
             const ampm = hours >= 12 ? 'PM' : 'AM';
             
-            // Convert to 12-hour format
             hours = hours % 12;
-            hours = hours ? hours : 12; // the hour '0' should be '12'
-            
-            // Add leading zero to minutes if needed
+            hours = hours ? hours : 12; 
             minutes = minutes < 10 ? '0' + minutes : minutes;
             
-            const timeString = hours + ':' + minutes + ' ' + ampm;
-            document.getElementById('live-clock').textContent = timeString;
+            document.getElementById('live-clock').textContent = hours + ':' + minutes + ' ' + ampm;
         }
 
-        // Simple function to start a countdown
-        function startTimer(durationInMinutes, displayElementId) {
-            let timer = durationInMinutes * 60;
+        function formatDisplayTime(dateObj) {
+            let hours = dateObj.getHours();
+            let minutes = dateObj.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            
+            return `${hours}:${minutes} ${ampm}`;
+        }
+
+        // Parse HH:MM into a real Date object for TODAY
+        function parseTimeToToday(timeStr) {
+            const parts = timeStr.trim().split(':');
+            const target = new Date();
+            if (parts.length === 2) {
+                target.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
+            }
+            return target;
+        }
+
+        function startCountdown(targetDateObj, displayElementId) {
+            const targetTime = targetDateObj.getTime();
             const display = document.getElementById(displayElementId);
+            
+            if(display.timerInterval) clearInterval(display.timerInterval);
 
-            setInterval(function () {
-                let hours = parseInt(timer / 3600, 10);
-                let minutes = parseInt((timer % 3600) / 60, 10);
-                let seconds = parseInt(timer % 60, 10);
+            display.timerInterval = setInterval(function () {
+                const now = new Date().getTime();
+                const distance = targetTime - now;
 
-                // Format to show leading zeros
+                if (distance <= 0) {
+                    clearInterval(display.timerInterval);
+                    display.textContent = "00m 00s";
+                    return;
+                }
+
+                let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
                 let timeString = "";
                 if (hours > 0) timeString += hours + "h ";
                 timeString += (minutes < 10 ? "0" + minutes : minutes) + "m ";
                 timeString += (seconds < 10 ? "0" + seconds : seconds) + "s";
 
                 display.textContent = timeString;
-
-                if (--timer < 0) {
-                    timer = 0; // Stop at zero
-                    display.textContent = "00m 00s";
-                }
             }, 1000);
         }
 
-        // Initialize timers and clock
+        async function loadSheetData() {
+            try {
+                const response = await fetch(sheetUrl);
+                const data = await response.text();
+                
+                const rows = data.split('\n').slice(1); 
+                const now = new Date();
+                const todayName = daysOfWeek[now.getDay()].toLowerCase();
+
+                // Object to group bosses by region for today
+                let todaysBosses = { 1: [], 2: [], 3: [] };
+
+                rows.forEach(row => {
+                    if (!row.trim()) return;
+                    
+                    // Columns: [0] Region, [1] BossName, [2] Weekday, [3] Time
+                    const columns = row.split(',');
+                    if (columns.length < 4) return;
+
+                    const regionText = columns[0].trim().toLowerCase();
+                    const bossNameText = columns[1].trim();
+                    const weekdayText = columns[2].trim().toLowerCase();
+                    const timeText = columns[3].trim(); 
+
+                    // Check if the row is for today
+                    if (weekdayText === todayName) {
+                        const colId = regionMap[regionText];
+                        if (colId) {
+                            todaysBosses[colId].push({
+                                name: bossNameText,
+                                dateObj: parseTimeToToday(timeText)
+                            });
+                        }
+                    }
+                });
+
+                // Find the next upcoming boss for each region
+                for (let colId = 1; colId <= 3; colId++) {
+                    const regionBosses = todaysBosses[colId];
+                    
+                    // Sort bosses by time just in case the spreadsheet is out of order
+                    regionBosses.sort((a, b) => a.dateObj - b.dateObj);
+
+                    let nextBoss = null;
+
+                    // Find the first boss whose time is in the future
+                    for (let boss of regionBosses) {
+                        if (boss.dateObj.getTime() > now.getTime()) {
+                            nextBoss = boss;
+                            break;
+                        }
+                    }
+
+                    // If all bosses for today have passed, just show the last one of the day
+                    if (!nextBoss && regionBosses.length > 0) {
+                        nextBoss = regionBosses[regionBosses.length - 1];
+                    }
+
+                    // Update the HTML
+                    if (nextBoss) {
+                        document.getElementById(`name-${colId}`).textContent = nextBoss.name;
+                        // Adds the Day label to the time like "Fri, 1:13 PM"
+                        const dayLabel = daysOfWeek[nextBoss.dateObj.getDay()].substring(0, 3);
+                        document.getElementById(`time-${colId}`).textContent = `${dayLabel}, ${formatDisplayTime(nextBoss.dateObj)}`;
+                        
+                        startCountdown(nextBoss.dateObj, `timer-${colId}`);
+                    } else {
+                        document.getElementById(`name-${colId}`).textContent = "No bosses today";
+                        document.getElementById(`time-${colId}`).textContent = "--:--";
+                        document.getElementById(`timer-${colId}`).textContent = "--m --s";
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error fetching Google Sheet data:', error);
+            }
+        }
+
         window.onload = function () {
-            // Start the live clock immediately and update every second
             updateClock();
             setInterval(updateClock, 1000);
-
-            // Start the boss timers
-            startTimer(55.96, 'timer-1'); // Dawncrest (~55m)
-            startTimer(46.96, 'timer-2'); // Silverfrost (~46m)
-            startTimer(432.96, 'timer-3'); // Rituals (~7h 12m)
+            
+            // Auto-refresh the schedule every 5 minutes so it automatically cycles to the next boss when one finishes!
+            loadSheetData();
+            setInterval(loadSheetData, 300000); 
         };
     </script>
 </body>
