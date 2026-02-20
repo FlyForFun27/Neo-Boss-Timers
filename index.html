@@ -24,44 +24,211 @@
             height: 100vh;
         }
 
-        /* Sidebar Styling */
-        .sidebar {
-            width: 200px;
-            background-color: var(--bg-panel);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            padding: 20px 0;
-        }
-
-        .sidebar-logo {
-            padding: 0 20px 20px 20px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .sidebar-menu {
-            list-style: none;
-            padding: 0;
-            margin: 20px 0;
-        }
-
-        .sidebar-menu li {
-            padding: 15px 20px;
-            cursor: pointer;
-            color: var(--text-muted);
-        }
-
-        .sidebar-menu li.active, .sidebar-menu li:hover {
-            background-color: #2a2a2b;
-            color: var(--text-main);
-            border-left: 3px solid var(--accent-purple);
-        }
-
         /* Main Content Styling */
         .main-content {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between; /* Spaces out logo and clock */
+            align-items: center;
+            padding: 15px 30px;
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-logo {
+            font-size: 1.3rem;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        .dashboard {
+            padding: 30px;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        /* Grid Layout for Columns */
+        .grid-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .column {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .column-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        /* Card Styling */
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .card.active {
+            border-left: 3px solid var(--accent-purple);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .boss-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .boss-time {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .status {
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: var(--text-muted);
+        }
+
+        /* Timer display */
+        .timer-box {
+            background-color: #1a1a1a;
+            text-align: center;
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 1.2rem;
+            color: var(--accent-purple);
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <main class="main-content">
+        <header class="header">
+            <div class="header-logo">Neo Boss Timers</div>
+            <div>
+                <span id="live-clock" style="margin-right: 20px;">12:17 PM</span>
+                <button style="background:var(--accent-purple); color:white; border:none; padding:5px 10px; border-radius: 4px; cursor: pointer;">EU</button>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <h2>Field Boss Timer</h2>
+            
+            <div class="grid-container">
+                <div class="column">
+                    <div class="column-title">Dawncrest</div>
+
+                    <div class="card active">
+                        <div class="card-header">
+                            <div>
+                                <div class="boss-name">Forest of Wisdom ✔</div>
+                                <div class="boss-time">Fri, 1:13 PM</div>
+                            </div>
+                            <div class="status" style="color: white;">CURRENT</div>
+                        </div>
+                        <div class="timer-box" id="timer-1">
+                            --m --s
+                        </div>
+                    </div>
+                </div>
+
+                <div class="column">
+                    <div class="column-title">Silverfrost</div>
+
+                    <div class="card active">
+                        <div class="card-header">
+                            <div>
+                                <div class="boss-name">Skypetal Plains ✔</div>
+                                <div class="boss-time">Fri, 1:04 PM</div>
+                            </div>
+                            <div class="status" style="color: white;">CURRENT</div>
+                        </div>
+                        <div class="timer-box" id="timer-2">
+                            --m --s
+                        </div>
+                    </div>
+                </div>
+
+                <div class="column">
+                    <div class="column-title">Rituals</div>
+
+                    <div class="card active">
+                        <div class="card-header">
+                            <div>
+                                <div class="boss-name">Rural Outfitters ✔</div>
+                                <div class="boss-time">Fri, 7:30 PM</div>
+                            </div>
+                            <div class="status" style="color: white;">CURRENT</div>
+                        </div>
+                        <div class="timer-box" id="timer-3">
+                            --m --s
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Simple function to start a countdown
+        function startTimer(durationInMinutes, displayElementId) {
+            let timer = durationInMinutes * 60;
+            const display = document.getElementById(displayElementId);
+
+            setInterval(function () {
+                let hours = parseInt(timer / 3600, 10);
+                let minutes = parseInt((timer % 3600) / 60, 10);
+                let seconds = parseInt(timer % 60, 10);
+
+                // Format to show leading zeros
+                let timeString = "";
+                if (hours > 0) timeString += hours + "h ";
+                timeString += (minutes < 10 ? "0" + minutes : minutes) + "m ";
+                timeString += (seconds < 10 ? "0" + seconds : seconds) + "s";
+
+                display.textContent = timeString;
+
+                if (--timer < 0) {
+                    timer = 0; // Stop at zero
+                    display.textContent = "00m 00s";
+                }
+            }, 1000);
+        }
+
+        // Initialize timers
+        window.onload = function () {
+            startTimer(55.96, 'timer-1'); // Dawncrest (~55m)
+            startTimer(46.96, 'timer-2'); // Silverfrost (~46m)
+            startTimer(432.96, 'timer-3'); // Rituals (~7h 12m)
+        };
+    </script>
+</body>
+</html>
