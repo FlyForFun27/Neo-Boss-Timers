@@ -229,11 +229,11 @@
             return `${hours}:${minutes} ${ampm}`;
         }
 
-        // Parse HH:MM into a real Date object for TODAY
+        // Parse HH:MM (and gracefully handle HH:MM:SS if Google Sheets adds seconds)
         function parseTimeToToday(timeStr) {
             const parts = timeStr.trim().split(':');
             const target = new Date();
-            if (parts.length === 2) {
+            if (parts.length >= 2) {
                 target.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
             }
             return target;
@@ -277,14 +277,18 @@
                 const now = new Date();
                 const todayName = daysOfWeek[now.getDay()].toLowerCase();
 
-                // Object to group bosses by region for today
                 let todaysBosses = { 1: [], 2: [], 3: [] };
 
                 rows.forEach(row => {
                     if (!row.trim()) return;
                     
-                    // Columns: [0] Region, [1] BossName, [2] Weekday, [3] Time
-                    const columns = row.split(',');
+                    let columns = row.split(',');
+                    
+                    // Bulletproof fix: If there is an empty column at the very start, remove it so the array shifts back to normal
+                    if (columns.length > 0 && columns[0].trim() === '') {
+                        columns.shift();
+                    }
+
                     if (columns.length < 4) return;
 
                     const regionText = columns[0].trim().toLowerCase();
@@ -308,12 +312,10 @@
                 for (let colId = 1; colId <= 3; colId++) {
                     const regionBosses = todaysBosses[colId];
                     
-                    // Sort bosses by time just in case the spreadsheet is out of order
                     regionBosses.sort((a, b) => a.dateObj - b.dateObj);
 
                     let nextBoss = null;
 
-                    // Find the first boss whose time is in the future
                     for (let boss of regionBosses) {
                         if (boss.dateObj.getTime() > now.getTime()) {
                             nextBoss = boss;
@@ -321,15 +323,12 @@
                         }
                     }
 
-                    // If all bosses for today have passed, just show the last one of the day
                     if (!nextBoss && regionBosses.length > 0) {
                         nextBoss = regionBosses[regionBosses.length - 1];
                     }
 
-                    // Update the HTML
                     if (nextBoss) {
                         document.getElementById(`name-${colId}`).textContent = nextBoss.name;
-                        // Adds the Day label to the time like "Fri, 1:13 PM"
                         const dayLabel = daysOfWeek[nextBoss.dateObj.getDay()].substring(0, 3);
                         document.getElementById(`time-${colId}`).textContent = `${dayLabel}, ${formatDisplayTime(nextBoss.dateObj)}`;
                         
@@ -350,7 +349,6 @@
             updateClock();
             setInterval(updateClock, 1000);
             
-            // Auto-refresh the schedule every 5 minutes so it automatically cycles to the next boss when one finishes!
             loadSheetData();
             setInterval(loadSheetData, 300000); 
         };
