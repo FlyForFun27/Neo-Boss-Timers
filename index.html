@@ -34,7 +34,7 @@
 
         .header {
             display: flex;
-            justify-content: space-between; /* Spaces out logo and clock */
+            justify-content: space-between;
             align-items: center;
             padding: 15px 30px;
             background-color: var(--bg-panel);
@@ -51,11 +51,6 @@
             padding: 30px;
         }
 
-        h2 {
-            font-size: 1.5rem;
-            margin-bottom: 20px;
-        }
-
         /* Grid Layout for Columns */
         .grid-container {
             display: flex;
@@ -69,10 +64,11 @@
         }
 
         .column-title {
-            font-size: 0.8rem;
+            font-size: 1.2rem; /* Increased text size */
+            font-weight: 600; /* Added slight boldness for hierarchy */
             text-transform: uppercase;
             color: var(--text-muted);
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             letter-spacing: 1px;
         }
 
@@ -133,13 +129,11 @@
         <header class="header">
             <div class="header-logo">Neo Boss Timers</div>
             <div>
-                <span id="live-clock">12:17 PM</span>
+                <span id="live-clock">--:-- --</span>
             </div>
         </header>
 
         <div class="dashboard">
-            <h2>Field Boss Timer</h2>
-            
             <div class="grid-container">
                 <div class="column">
                     <div class="column-title">Dawncrest</div>
@@ -197,6 +191,24 @@
     </main>
 
     <script>
+        // Function to run the live clock in the top right
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            
+            // Convert to 12-hour format
+            hours = hours % 12;
+            hours = hours ? hours : 12; // the hour '0' should be '12'
+            
+            // Add leading zero to minutes if needed
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            
+            const timeString = hours + ':' + minutes + ' ' + ampm;
+            document.getElementById('live-clock').textContent = timeString;
+        }
+
         // Simple function to start a countdown
         function startTimer(durationInMinutes, displayElementId) {
             let timer = durationInMinutes * 60;
@@ -222,8 +234,13 @@
             }, 1000);
         }
 
-        // Initialize timers
+        // Initialize timers and clock
         window.onload = function () {
+            // Start the live clock immediately and update every second
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            // Start the boss timers
             startTimer(55.96, 'timer-1'); // Dawncrest (~55m)
             startTimer(46.96, 'timer-2'); // Silverfrost (~46m)
             startTimer(432.96, 'timer-3'); // Rituals (~7h 12m)
