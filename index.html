@@ -118,8 +118,19 @@
         input:checked + .slider:before { transform: translateX(16px); }
 
         .dashboard { padding: 30px; }
-        .grid-container { display: flex; gap: 20px; flex-wrap: wrap; }
-        .column { flex: 1; min-width: 280px; }
+        
+        .grid-container { 
+            display: flex; 
+            gap: 20px; 
+            flex-wrap: wrap; 
+            justify-content: center; /* Centers the columns */
+        }
+
+        .column { 
+            flex: 1; 
+            min-width: 250px; 
+            max-width: 320px; /* Made columns more narrow */
+        }
 
         .column-title {
             font-size: 1.1rem;
@@ -173,8 +184,7 @@
         <header class="header">
             <div class="header-logo">Neo Boss Timers</div>
             <div class="header-right">
-                <div class="theme-selector" id="theme-selector">
-                    </div>
+                <div class="theme-selector" id="theme-selector"></div>
                 <div class="toggle-container">
                     <span>Timer</span>
                     <label class="switch">
@@ -198,8 +208,6 @@
     <script>
         const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtRlBFHRViiLrjzmlEvxgI8-1UNwfrJWJU7fsej4eO6dLOEEzozvd_03KmgWhAIZonrzb2QupMcvVK/pub?output=csv';
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        
-        // Theme Colors (Changed white to light grey #d1d1d1)
         const themes = ['#9d4edd', '#4cc9f0', '#f72585', '#4ade80', '#fbbf24', '#f87171', '#818cf8', '#d1d1d1'];
         let globalBossData = [];
         
