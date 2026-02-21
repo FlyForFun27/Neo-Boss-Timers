@@ -54,7 +54,6 @@
             gap: 25px;
         }
 
-        /* Toggle Slider Styling */
         .toggle-container {
             display: flex;
             align-items: center;
@@ -120,7 +119,6 @@
             padding: 15px;
             margin-bottom: 15px;
             position: relative;
-            /* Removed the transition here to prevent visual flickering when re-rendering */
         }
 
         .card.next-up {
@@ -157,9 +155,9 @@
             <div class="header-logo">Neo Boss Timers</div>
             <div class="header-right">
                 <div class="toggle-container">
-                    <span>Animations</span>
+                    <span>Timer</span>
                     <label class="switch">
-                        <input type="checkbox" id="anim-toggle">
+                        <input type="checkbox" id="timer-toggle">
                         <span class="slider"></span>
                     </label>
                 </div>
@@ -181,15 +179,14 @@
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         let globalBossData = [];
         
-        // Load the saved toggle state (Defaults to true if it has never been set before)
-        let animationsOn = localStorage.getItem('animationsOn') !== 'false';
-        document.getElementById('anim-toggle').checked = animationsOn;
+        // Memory for the toggle - defaults to ON (true)
+        let timersOn = localStorage.getItem('timersOn') !== 'false';
+        document.getElementById('timer-toggle').checked = timersOn;
 
-        // Save the setting when the user clicks the toggle
-        document.getElementById('anim-toggle').addEventListener('change', (e) => {
-            animationsOn = e.target.checked;
-            localStorage.setItem('animationsOn', animationsOn);
-            renderDashboard(); // Instant visual update
+        document.getElementById('timer-toggle').addEventListener('change', (e) => {
+            timersOn = e.target.checked;
+            localStorage.setItem('timersOn', timersOn);
+            renderDashboard();
         });
 
         function updateClock() {
@@ -241,14 +238,12 @@
                     return a.dateObj - b.dateObj;
                 });
 
-                // Instead of completely clearing the HTML every second (which causes text to jitter),
-                // we build the HTML structure dynamically as a single string, then inject it.
                 let columnHTML = '';
                 let foundNext = false;
 
                 filtered.forEach(boss => {
                     const target = boss.dateObj.getTime();
-                    const end = target + 300000; // +5 mins
+                    const end = target + 300000;
                     const timeStr = boss.dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                     
                     let cardClasses = 'card';
@@ -258,13 +253,9 @@
                     if (now > end) {
                         cardClasses += ' expired';
                     } else {
-                        if (!foundNext) { 
-                            cardClasses += ' next-up'; 
-                            foundNext = true; 
-                        }
+                        if (!foundNext) { cardClasses += ' next-up'; foundNext = true; }
                         
                         if (now >= target) {
-                            // Phase: Currently Spawning (Always ticks, ignoring the toggle)
                             cardClasses += ' spawned';
                             timerClasses += ' spawn-text';
                             const d = end - now;
@@ -272,9 +263,8 @@
                             const s = Math.floor((d % 60000) / 1000).toString().padStart(2, '0');
                             timerHTML = `Spawn in ${m}m ${s}s`;
                         } else {
-                            // Phase: Future Spawn
                             cardClasses += ' active';
-                            if (animationsOn) {
+                            if (timersOn) {
                                 const d = target - now;
                                 const h = Math.floor(d / 3600000);
                                 const m = Math.floor((d % 3600000) / 60000).toString().padStart(2, '0');
@@ -306,12 +296,8 @@
         window.onload = () => {
             updateClock(); 
             setInterval(updateClock, 1000);
-            
             loadSheetData(); 
-            setInterval(loadSheetData, 600000); // Check sheet every 10 mins
-            
-            // This now runs every second regardless of the toggle state, 
-            // so the cards can properly shift to "expired" and the live spawn timer can tick.
+            setInterval(loadSheetData, 600000); 
             setInterval(renderDashboard, 1000); 
         };
     </script>
