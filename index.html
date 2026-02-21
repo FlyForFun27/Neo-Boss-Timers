@@ -14,6 +14,7 @@
             --accent-purple: #9d4edd;
             --accent-red: #FF6961;
             --border-color: #333333;
+            --highlight-bg: rgba(157, 78, 221, 0.05);
         }
 
         body {
@@ -73,6 +74,7 @@
             padding-bottom: 5px;
         }
 
+        /* Card Styling */
         .card {
             background-color: var(--bg-card);
             border: 1px solid var(--border-color);
@@ -80,14 +82,31 @@
             padding: 15px;
             margin-bottom: 15px;
             position: relative;
+            transition: all 0.3s ease;
+        }
+
+        /* Highlight for the very next spawn */
+        .card.next-up {
+            background-color: var(--highlight-bg);
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 10px rgba(157, 78, 221, 0.1);
         }
 
         .card.active {
-            border-left: 3px solid var(--accent-purple);
+            border-left: 4px solid var(--accent-purple);
         }
 
         .card.spawned {
-            border-left: 3px solid var(--accent-red);
+            border-left: 4px solid var(--accent-red);
+        }
+
+        .card.expired {
+            opacity: 0.3;
+            border-left: 1px solid var(--border-color);
+        }
+
+        .card.expired .timer-box {
+            display: none;
         }
 
         .card-header {
@@ -156,6 +175,7 @@
     <script>
         const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtRlBFHRViiLrjzmlEvxgI8-1UNwfrJWJU7fsej4eO6dLOEEzozvd_03KmgWhAIZonrzb2QupMcvVK/pub?output=csv';
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        let globalBossData = [];
 
         function updateClock() {
             const now = new Date();
@@ -176,53 +196,14 @@
             return target;
         }
 
-        function startCountdown(targetDateObj, timerElement, cardElement) {
-            const targetTime = targetDateObj.getTime();
-            const spawnEndTime = targetTime + (5 * 60 * 1000); 
-
-            const interval = setInterval(() => {
-                const now = new Date().getTime();
-                
-                if (now < targetTime) {
-                    const distance = targetTime - now;
-                    let h = Math.floor((distance / (1000 * 60 * 60)));
-                    let m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                    let s = Math.floor((distance % (1000 * 60)) / 1000);
-                    
-                    timerElement.innerHTML = `${h > 0 ? h + 'h ' : ''}${m < 10 ? '0' + m : m}m ${s < 10 ? '0' + s : s}s`;
-                    timerElement.classList.remove('spawn-text');
-                    cardElement.classList.add('active');
-                } 
-                else if (now >= targetTime && now < spawnEndTime) {
-                    const distance = spawnEndTime - now;
-                    let m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                    let s = Math.floor((distance % (1000 * 60)) / 1000);
-                    
-                    timerElement.innerHTML = `Spawn in ${m}m ${s < 10 ? '0' + s : s}s`;
-                    timerElement.classList.add('spawn-text');
-                    cardElement.classList.remove('active');
-                    cardElement.classList.add('spawned');
-                } 
-                else {
-                    clearInterval(interval);
-                    cardElement.remove(); // REMOVE CARD ONCE EXPIRED
-                }
-            }, 1000);
-        }
-
         async function loadSheetData() {
             try {
                 const response = await fetch(sheetUrl);
                 const data = await response.text();
                 const rows = data.split('\n').slice(1);
-                const now = new Date();
-                const todayName = daysOfWeek[now.getDay()].toLowerCase();
+                const todayName = daysOfWeek[new Date().getDay()].toLowerCase();
 
-                // Clear current lists
-                document.querySelectorAll('.boss-list').forEach(el => el.innerHTML = '');
-
-                // Filter and sort the data before creating cards
-                let activeData = rows.map(row => {
+                globalBossData = rows.map(row => {
                     if (!row.trim()) return null;
                     let cols = row.split(',');
                     if (cols[0].trim() === '') cols.shift();
@@ -232,54 +213,105 @@
                         region: cols[0].trim().toLowerCase(),
                         name: cols[1].trim(),
                         day: cols[2].trim().toLowerCase(),
-                        timeStr: cols[3].trim(),
                         dateObj: parseTimeToToday(cols[3].trim())
                     };
-                }).filter(item => {
-                    if (!item) return false;
-                    // Keep if it's today AND (it's in the future OR it's within the 5-min spawn window)
-                    const spawnEndTime = item.dateObj.getTime() + (5 * 60 * 1000);
-                    return item.day === todayName && now.getTime() < spawnEndTime;
-                });
+                }).filter(item => item && item.day === todayName);
 
-                // Sort by time (Earliest first)
-                activeData.sort((a, b) => a.dateObj - b.dateObj);
-
-                activeData.forEach(item => {
-                    const targetCol = document.querySelector(`#col-${item.region.replace('ritual', 'rituals')} .boss-list`);
-                    if (targetCol) {
-                        createBossCard(targetCol, item.name, item.dateObj);
-                    }
-                });
+                renderDashboard();
             } catch (err) { console.error("Fetch error:", err); }
         }
 
-        function createBossCard(container, name, dateObj) {
-            const card = document.createElement('div');
-            card.className = 'card';
-            const displayTime = dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        function renderDashboard() {
+            const now = new Date().getTime();
+            document.querySelectorAll('.boss-list').forEach(el => el.innerHTML = '');
 
-            card.innerHTML = `
-                <div class="card-header">
-                    <div>
-                        <div class="boss-name">${name}</div>
-                        <div class="boss-time">${daysOfWeek[dateObj.getDay()].substring(0, 3)}, ${displayTime}</div>
-                    </div>
-                </div>
-                <div class="timer-box">--m --s</div>
-            `;
+            // Group by region
+            const regions = ['dawncrest', 'silverfrost', 'rituals'];
             
-            container.appendChild(card);
-            const timerBox = card.querySelector('.timer-box');
-            startCountdown(dateObj, timerBox, card);
+            regions.forEach(reg => {
+                const regKey = reg.replace('rituals', 'ritual'); // Match spreadsheet key
+                const filtered = globalBossData.filter(b => b.region === regKey || b.region === reg);
+                
+                // Sort: Upcoming/Active first, then Expired
+                filtered.sort((a, b) => {
+                    const aEnd = a.dateObj.getTime() + (5 * 60 * 1000);
+                    const bEnd = b.dateObj.getTime() + (5 * 60 * 1000);
+                    const aExpired = now > aEnd;
+                    const bExpired = now > bEnd;
+
+                    if (aExpired !== bExpired) return aExpired ? 1 : -1;
+                    return a.dateObj - b.dateObj;
+                });
+
+                let foundNext = false;
+                const container = document.querySelector(`#col-${reg} .boss-list`);
+
+                filtered.forEach(boss => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    
+                    const targetTime = boss.dateObj.getTime();
+                    const spawnEndTime = targetTime + (5 * 60 * 1000);
+                    const displayTime = boss.dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <div>
+                                <div class="boss-name">${boss.name}</div>
+                                <div class="boss-time">${displayTime}</div>
+                            </div>
+                        </div>
+                        <div class="timer-box"></div>
+                    `;
+
+                    const timerBox = card.querySelector('.timer-box');
+
+                    if (now > spawnEndTime) {
+                        card.classList.add('expired');
+                    } else {
+                        if (!foundNext) {
+                            card.classList.add('next-up');
+                            foundNext = true;
+                        }
+
+                        if (now >= targetTime) {
+                            card.classList.add('spawned');
+                            updateSpawnTimer(spawnEndTime, timerBox);
+                        } else {
+                            card.classList.add('active');
+                            updateCountdown(targetTime, timerBox);
+                        }
+                    }
+
+                    container.appendChild(card);
+                });
+            });
+        }
+
+        function updateCountdown(target, el) {
+            const distance = target - new Date().getTime();
+            let h = Math.floor(distance / (1000 * 60 * 60));
+            let m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            let s = Math.floor((distance % (1000 * 60)) / 1000);
+            el.innerHTML = `${h > 0 ? h + 'h ' : ''}${m < 10 ? '0' + m : m}m ${s < 10 ? '0' + s : s}s`;
+        }
+
+        function updateSpawnTimer(end, el) {
+            const distance = end - new Date().getTime();
+            let m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            let s = Math.floor((distance % (1000 * 60)) / 1000);
+            el.innerHTML = `Spawn in ${m}m ${s < 10 ? '0' + s : s}s`;
+            el.classList.add('spawn-text');
         }
 
         window.onload = () => {
             updateClock();
             setInterval(updateClock, 1000);
             loadSheetData();
-            // Refresh every 5 mins to sync with spreadsheet/day changes
-            setInterval(loadSheetData, 300000);
+            // Refresh visuals every second
+            setInterval(renderDashboard, 1000);
+            // Re-fetch sheet data every 10 mins
+            setInterval(loadSheetData, 600000);
         };
     </script>
 </body>
