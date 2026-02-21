@@ -123,13 +123,13 @@
             display: flex; 
             gap: 20px; 
             flex-wrap: wrap; 
-            justify-content: center; /* Centers the columns */
+            justify-content: center; /* Centers columns on screen */
         }
 
         .column { 
             flex: 1; 
-            min-width: 250px; 
-            max-width: 360px; /* Increased back slightly to 360px */
+            min-width: 280px; 
+            max-width: 380px; /* Final width set to 380px */
         }
 
         .column-title {
@@ -208,6 +208,8 @@
     <script>
         const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtRlBFHRViiLrjzmlEvxgI8-1UNwfrJWJU7fsej4eO6dLOEEzozvd_03KmgWhAIZonrzb2QupMcvVK/pub?output=csv';
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        
+        // Themes including the requested light grey (#d1d1d1)
         const themes = ['#9d4edd', '#4cc9f0', '#f72585', '#4ade80', '#fbbf24', '#f87171', '#818cf8', '#d1d1d1'];
         let globalBossData = [];
         
