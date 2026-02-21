@@ -159,11 +159,10 @@
 
         .card.active { border-left: 4px solid var(--accent-main); }
 
-        /* The "Spawning Now" Full Red Border Update */
         .card.spawned { 
-            border: 1px solid var(--accent-red); /* Full border becomes red */
-            border-left: 5px solid var(--accent-red); /* Extra thick left bar */
-            background-color: rgba(255, 105, 97, 0.03); /* Very faint red tint */
+            border: 1px solid var(--accent-red); 
+            border-left: 5px solid var(--accent-red); 
+            background-color: rgba(255, 105, 97, 0.03); 
         }
 
         .card.expired { opacity: 0.25; border-left: 1px solid var(--border-color); }
@@ -309,7 +308,6 @@
                     if (now > end) {
                         cardClasses += ' expired';
                     } else {
-                        // Prioritize "Spawned" state over "Next Up" highlight
                         if (now >= target) {
                             cardClasses += ' spawned';
                             timerClasses += ' spawn-text';
@@ -326,7 +324,7 @@
                                 const s = Math.floor((d%60000)/1000).toString().padStart(2,'0');
                                 timerHTML = `${h > 0 ? h + 'h ' : ''}${m}m ${s}s`;
                             } else {
-                                timerHTML = `Starts at ${timeStr}`;
+                                timerHTML = `Announcement at ${timeStr}`;
                             }
                         }
                     }
