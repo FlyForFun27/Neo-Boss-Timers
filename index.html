@@ -61,7 +61,7 @@
             align-items: center;
             gap: 8px;
             background: #2a2a2a;
-            padding: 5px 10px;
+            padding: 7px 12px;
             border-radius: 20px;
             border: 1px solid var(--border-color);
         }
@@ -111,6 +111,7 @@
             background-color: white;
             transition: .3s;
             border-radius: 50%;
+            z-index: 2;
         }
 
         input:checked + .slider { background-color: var(--accent-main); }
@@ -173,7 +174,6 @@
             <div class="header-logo">Neo Boss Timers</div>
             <div class="header-right">
                 <div class="theme-selector" id="theme-selector">
-                    <span style="font-size: 12px; margin-right: 5px;">🎨</span>
                     </div>
                 <div class="toggle-container">
                     <span>Timer</span>
@@ -199,21 +199,19 @@
         const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtRlBFHRViiLrjzmlEvxgI8-1UNwfrJWJU7fsej4eO6dLOEEzozvd_03KmgWhAIZonrzb2QupMcvVK/pub?output=csv';
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         
-        // Theme Colors
-        const themes = ['#9d4edd', '#4cc9f0', '#f72585', '#4ade80', '#fbbf24', '#f87171', '#818cf8', '#ffffff'];
+        // Theme Colors (Changed white to light grey #d1d1d1)
+        const themes = ['#9d4edd', '#4cc9f0', '#f72585', '#4ade80', '#fbbf24', '#f87171', '#818cf8', '#d1d1d1'];
         let globalBossData = [];
         
         let timersOn = localStorage.getItem('timersOn') !== 'false';
         let currentAccent = localStorage.getItem('accentColor') || '#9d4edd';
 
-        // Apply theme
         function applyTheme(color) {
             currentAccent = color;
             document.documentElement.style.setProperty('--accent-main', color);
             localStorage.setItem('accentColor', color);
         }
 
-        // Initialize Theme UI
         const themeContainer = document.getElementById('theme-selector');
         themes.forEach(color => {
             const dot = document.createElement('div');
