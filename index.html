@@ -48,20 +48,59 @@
             letter-spacing: 0.5px;
         }
 
-        .dashboard {
-            padding: 30px;
-        }
-
-        .grid-container {
+        .header-right {
             display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
+            align-items: center;
+            gap: 25px;
         }
 
-        .column {
-            flex: 1;
-            min-width: 280px;
+        /* Toggle Slider Styling */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
         }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+
+        .switch input { 
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333;
+            transition: .3s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px; width: 14px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider { background-color: var(--accent-purple); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        .dashboard { padding: 30px; }
+        .grid-container { display: flex; gap: 20px; flex-wrap: wrap; }
+        .column { flex: 1; min-width: 280px; }
 
         .column-title {
             font-size: 1.2rem;
@@ -74,7 +113,6 @@
             padding-bottom: 5px;
         }
 
-        /* Card Styling */
         .card {
             background-color: var(--bg-card);
             border: 1px solid var(--border-color);
@@ -82,50 +120,21 @@
             padding: 15px;
             margin-bottom: 15px;
             position: relative;
-            transition: all 0.3s ease;
+            /* Removed the transition here to prevent visual flickering when re-rendering */
         }
 
-        /* Highlight for the very next spawn */
         .card.next-up {
             background-color: var(--highlight-bg);
             border-color: var(--accent-purple);
-            box-shadow: 0 0 10px rgba(157, 78, 221, 0.1);
         }
 
-        .card.active {
-            border-left: 4px solid var(--accent-purple);
-        }
+        .card.active { border-left: 4px solid var(--accent-purple); }
+        .card.spawned { border-left: 4px solid var(--accent-red); }
+        .card.expired { opacity: 0.25; }
+        .card.expired .timer-box { display: none; }
 
-        .card.spawned {
-            border-left: 4px solid var(--accent-red);
-        }
-
-        .card.expired {
-            opacity: 0.3;
-            border-left: 1px solid var(--border-color);
-        }
-
-        .card.expired .timer-box {
-            display: none;
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 10px;
-        }
-
-        .boss-name {
-            font-weight: 600;
-            font-size: 0.95rem;
-        }
-
-        .boss-time {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            margin-top: 4px;
-        }
+        .boss-name { font-weight: 600; font-size: 0.95rem; }
+        .boss-time { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
 
         .timer-box {
             background-color: #1a1a1a;
@@ -135,11 +144,10 @@
             font-size: 1.1rem;
             color: var(--accent-purple);
             font-weight: bold;
+            margin-top: 10px;
         }
 
-        .spawn-text {
-            color: var(--accent-red);
-        }
+        .spawn-text { color: var(--accent-red); }
     </style>
 </head>
 <body>
@@ -147,27 +155,23 @@
     <main class="main-content">
         <header class="header">
             <div class="header-logo">Neo Boss Timers</div>
-            <div>
+            <div class="header-right">
+                <div class="toggle-container">
+                    <span>Animations</span>
+                    <label class="switch">
+                        <input type="checkbox" id="anim-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
                 <span id="live-clock">--:-- --</span>
             </div>
         </header>
 
         <div class="dashboard">
             <div class="grid-container">
-                <div class="column" id="col-dawncrest">
-                    <div class="column-title">Dawncrest</div>
-                    <div class="boss-list"></div>
-                </div>
-
-                <div class="column" id="col-silverfrost">
-                    <div class="column-title">Silverfrost</div>
-                    <div class="boss-list"></div>
-                </div>
-
-                <div class="column" id="col-rituals">
-                    <div class="column-title">Rituals</div>
-                    <div class="boss-list"></div>
-                </div>
+                <div class="column" id="col-dawncrest"><div class="column-title">Dawncrest</div><div class="boss-list"></div></div>
+                <div class="column" id="col-silverfrost"><div class="column-title">Silverfrost</div><div class="boss-list"></div></div>
+                <div class="column" id="col-rituals"><div class="column-title">Rituals</div><div class="boss-list"></div></div>
             </div>
         </div>
     </main>
@@ -176,23 +180,29 @@
         const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtRlBFHRViiLrjzmlEvxgI8-1UNwfrJWJU7fsej4eO6dLOEEzozvd_03KmgWhAIZonrzb2QupMcvVK/pub?output=csv';
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         let globalBossData = [];
+        
+        // Load the saved toggle state (Defaults to true if it has never been set before)
+        let animationsOn = localStorage.getItem('animationsOn') !== 'false';
+        document.getElementById('anim-toggle').checked = animationsOn;
+
+        // Save the setting when the user clicks the toggle
+        document.getElementById('anim-toggle').addEventListener('change', (e) => {
+            animationsOn = e.target.checked;
+            localStorage.setItem('animationsOn', animationsOn);
+            renderDashboard(); // Instant visual update
+        });
 
         function updateClock() {
             const now = new Date();
-            let hours = now.getHours();
-            let minutes = now.getMinutes();
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12 || 12;
-            minutes = minutes < 10 ? '0' + minutes : minutes;
-            document.getElementById('live-clock').textContent = hours + ':' + minutes + ' ' + ampm;
+            let h = now.getHours() % 12 || 12;
+            let m = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('live-clock').textContent = `${h}:${m} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
         }
 
         function parseTimeToToday(timeStr) {
-            const parts = timeStr.trim().split(':');
             const target = new Date();
-            if (parts.length >= 2) {
-                target.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
-            }
+            const [hrs, mins] = timeStr.trim().split(':');
+            target.setHours(parseInt(hrs), parseInt(mins), 0, 0);
             return target;
         }
 
@@ -201,117 +211,108 @@
                 const response = await fetch(sheetUrl);
                 const data = await response.text();
                 const rows = data.split('\n').slice(1);
-                const todayName = daysOfWeek[new Date().getDay()].toLowerCase();
+                const today = daysOfWeek[new Date().getDay()].toLowerCase();
 
                 globalBossData = rows.map(row => {
-                    if (!row.trim()) return null;
                     let cols = row.split(',');
                     if (cols[0].trim() === '') cols.shift();
                     if (cols.length < 4) return null;
-
                     return {
                         region: cols[0].trim().toLowerCase(),
                         name: cols[1].trim(),
                         day: cols[2].trim().toLowerCase(),
                         dateObj: parseTimeToToday(cols[3].trim())
                     };
-                }).filter(item => item && item.day === todayName);
-
+                }).filter(item => item && item.day === today);
                 renderDashboard();
-            } catch (err) { console.error("Fetch error:", err); }
+            } catch (err) { console.error(err); }
         }
 
         function renderDashboard() {
             const now = new Date().getTime();
-            document.querySelectorAll('.boss-list').forEach(el => el.innerHTML = '');
-
-            // Group by region
-            const regions = ['dawncrest', 'silverfrost', 'rituals'];
-            
-            regions.forEach(reg => {
-                const regKey = reg.replace('rituals', 'ritual'); // Match spreadsheet key
+            ['dawncrest', 'silverfrost', 'rituals'].forEach(reg => {
+                const regKey = reg.replace('rituals', 'ritual');
                 const filtered = globalBossData.filter(b => b.region === regKey || b.region === reg);
                 
-                // Sort: Upcoming/Active first, then Expired
                 filtered.sort((a, b) => {
-                    const aEnd = a.dateObj.getTime() + (5 * 60 * 1000);
-                    const bEnd = b.dateObj.getTime() + (5 * 60 * 1000);
-                    const aExpired = now > aEnd;
-                    const bExpired = now > bEnd;
-
-                    if (aExpired !== bExpired) return aExpired ? 1 : -1;
+                    const aEnd = a.dateObj.getTime() + 300000;
+                    const bEnd = b.dateObj.getTime() + 300000;
+                    if ((now > aEnd) !== (now > bEnd)) return now > aEnd ? 1 : -1;
                     return a.dateObj - b.dateObj;
                 });
 
+                // Instead of completely clearing the HTML every second (which causes text to jitter),
+                // we build the HTML structure dynamically as a single string, then inject it.
+                let columnHTML = '';
                 let foundNext = false;
-                const container = document.querySelector(`#col-${reg} .boss-list`);
 
                 filtered.forEach(boss => {
-                    const card = document.createElement('div');
-                    card.className = 'card';
+                    const target = boss.dateObj.getTime();
+                    const end = target + 300000; // +5 mins
+                    const timeStr = boss.dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                     
-                    const targetTime = boss.dateObj.getTime();
-                    const spawnEndTime = targetTime + (5 * 60 * 1000);
-                    const displayTime = boss.dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                    let cardClasses = 'card';
+                    let timerHTML = '';
+                    let timerClasses = 'timer-box';
 
-                    card.innerHTML = `
-                        <div class="card-header">
-                            <div>
-                                <div class="boss-name">${boss.name}</div>
-                                <div class="boss-time">${displayTime}</div>
-                            </div>
-                        </div>
-                        <div class="timer-box"></div>
-                    `;
-
-                    const timerBox = card.querySelector('.timer-box');
-
-                    if (now > spawnEndTime) {
-                        card.classList.add('expired');
+                    if (now > end) {
+                        cardClasses += ' expired';
                     } else {
-                        if (!foundNext) {
-                            card.classList.add('next-up');
-                            foundNext = true;
+                        if (!foundNext) { 
+                            cardClasses += ' next-up'; 
+                            foundNext = true; 
                         }
-
-                        if (now >= targetTime) {
-                            card.classList.add('spawned');
-                            updateSpawnTimer(spawnEndTime, timerBox);
+                        
+                        if (now >= target) {
+                            // Phase: Currently Spawning (Always ticks, ignoring the toggle)
+                            cardClasses += ' spawned';
+                            timerClasses += ' spawn-text';
+                            const d = end - now;
+                            const m = Math.floor(d / 60000);
+                            const s = Math.floor((d % 60000) / 1000).toString().padStart(2, '0');
+                            timerHTML = `Spawn in ${m}m ${s}s`;
                         } else {
-                            card.classList.add('active');
-                            updateCountdown(targetTime, timerBox);
+                            // Phase: Future Spawn
+                            cardClasses += ' active';
+                            if (animationsOn) {
+                                const d = target - now;
+                                const h = Math.floor(d / 3600000);
+                                const m = Math.floor((d % 3600000) / 60000).toString().padStart(2, '0');
+                                const s = Math.floor((d % 60000) / 1000).toString().padStart(2, '0');
+                                timerHTML = `${h > 0 ? h + 'h ' : ''}${m}m ${s}s`;
+                            } else {
+                                timerHTML = `Starts at ${timeStr}`;
+                            }
                         }
                     }
 
-                    container.appendChild(card);
+                    columnHTML += `
+                        <div class="${cardClasses}">
+                            <div class="card-header">
+                                <div>
+                                    <div class="boss-name">${boss.name}</div>
+                                    <div class="boss-time">${timeStr}</div>
+                                </div>
+                            </div>
+                            <div class="${timerClasses}">${timerHTML}</div>
+                        </div>
+                    `;
                 });
+
+                document.querySelector(`#col-${reg} .boss-list`).innerHTML = columnHTML;
             });
         }
 
-        function updateCountdown(target, el) {
-            const distance = target - new Date().getTime();
-            let h = Math.floor(distance / (1000 * 60 * 60));
-            let m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            let s = Math.floor((distance % (1000 * 60)) / 1000);
-            el.innerHTML = `${h > 0 ? h + 'h ' : ''}${m < 10 ? '0' + m : m}m ${s < 10 ? '0' + s : s}s`;
-        }
-
-        function updateSpawnTimer(end, el) {
-            const distance = end - new Date().getTime();
-            let m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            let s = Math.floor((distance % (1000 * 60)) / 1000);
-            el.innerHTML = `Spawn in ${m}m ${s < 10 ? '0' + s : s}s`;
-            el.classList.add('spawn-text');
-        }
-
         window.onload = () => {
-            updateClock();
+            updateClock(); 
             setInterval(updateClock, 1000);
-            loadSheetData();
-            // Refresh visuals every second
-            setInterval(renderDashboard, 1000);
-            // Re-fetch sheet data every 10 mins
-            setInterval(loadSheetData, 600000);
+            
+            loadSheetData(); 
+            setInterval(loadSheetData, 600000); // Check sheet every 10 mins
+            
+            // This now runs every second regardless of the toggle state, 
+            // so the cards can properly shift to "expired" and the live spawn timer can tick.
+            setInterval(renderDashboard, 1000); 
         };
     </script>
 </body>
