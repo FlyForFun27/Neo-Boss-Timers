@@ -315,33 +315,4 @@
                                 const m = Math.floor((d%3600000)/60000).toString().padStart(2,'0');
                                 const s = Math.floor((d%60000)/1000).toString().padStart(2,'0');
                                 timerHTML = `${h > 0 ? h + 'h ' : ''}${m}m ${s}s`;
-                            } else {
-                                timerHTML = `Starts at ${timeStr}`;
                             }
-                        }
-                    }
-
-                    columnHTML += `
-                        <div class="${cardClasses}">
-                            <div class="card-header">
-                                <div>
-                                    <div class="boss-name">${boss.name}</div>
-                                    <div class="boss-time">${timeStr}</div>
-                                </div>
-                            </div>
-                            <div class="${timerClasses}">${timerHTML}</div>
-                        </div>
-                    `;
-                });
-                document.querySelector(`#col-${reg} .boss-list`).innerHTML = columnHTML;
-            });
-        }
-
-        window.onload = () => {
-            updateClock(); setInterval(updateClock, 1000);
-            loadSheetData(); setInterval(loadSheetData, 600000);
-            setInterval(renderDashboard, 1000);
-        };
-    </script>
-</body>
-</html>
