@@ -130,6 +130,7 @@
         .column { 
             flex: 1; 
             min-width: 300px;
+            max-width: 400px; /* Slight limit to keep 5 columns looking neat */
         }
 
         .column-title {
@@ -204,11 +205,8 @@
         </header>
 
         <div class="dashboard">
-            <div class="grid-container">
-                <div class="column" id="col-dawncrest"><div class="column-title">Dawncrest</div><div class="boss-list"></div></div>
-                <div class="column" id="col-silverfrost"><div class="column-title">Silverfrost</div><div class="boss-list"></div></div>
-                <div class="column" id="col-rituals"><div class="column-title">Rituals</div><div class="boss-list"></div></div>
-            </div>
+            <div class="grid-container" id="dynamic-grid">
+                </div>
         </div>
     </main>
 
@@ -270,7 +268,7 @@
                     if (cols[0].trim() === '') cols.shift();
                     if (cols.length < 4) return null;
                     return {
-                        region: cols[0].trim().toLowerCase(),
+                        region: cols[0].trim(), // Not lowering case to keep original formatting for titles
                         name: cols[1].trim(),
                         day: cols[2].trim().toLowerCase(),
                         dateObj: parseTimeToToday(cols[3].trim())
@@ -282,10 +280,17 @@
 
         function renderDashboard() {
             const now = new Date().getTime();
-            ['dawncrest', 'silverfrost', 'rituals'].forEach(reg => {
-                const regKey = reg.replace('rituals', 'ritual');
-                const filtered = globalBossData.filter(b => b.region === regKey || b.region === reg);
+            const grid = document.getElementById('dynamic-grid');
+            grid.innerHTML = ''; // Clear the grid to rebuild
+
+            // 1. Get unique regions from the data
+            const uniqueRegions = [...new Set(globalBossData.map(b => b.region))];
+
+            // 2. Sort regions (optional, keeping them in order of appearance)
+            uniqueRegions.forEach(regionName => {
+                const filtered = globalBossData.filter(b => b.region === regionName);
                 
+                // Sort bosses within column: Active first, then Expired
                 filtered.sort((a, b) => {
                     const aEnd = a.dateObj.getTime() + 300000;
                     const bEnd = b.dateObj.getTime() + 300000;
@@ -293,7 +298,12 @@
                     return a.dateObj - b.dateObj;
                 });
 
-                let columnHTML = '';
+                // Create the column element
+                const colDiv = document.createElement('div');
+                colDiv.className = 'column';
+                colDiv.innerHTML = `<div class="column-title">${regionName}</div><div class="boss-list"></div>`;
+                const listDiv = colDiv.querySelector('.boss-list');
+
                 let foundNext = false;
 
                 filtered.forEach(boss => {
@@ -329,7 +339,7 @@
                         }
                     }
 
-                    columnHTML += `
+                    listDiv.innerHTML += `
                         <div class="${cardClasses}">
                             <div class="card-header">
                                 <div>
@@ -341,7 +351,8 @@
                         </div>
                     `;
                 });
-                document.querySelector(`#col-${reg} .boss-list`).innerHTML = columnHTML;
+
+                grid.appendChild(colDiv);
             });
         }
 
