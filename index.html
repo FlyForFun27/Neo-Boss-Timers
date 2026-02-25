@@ -129,8 +129,8 @@
 
         .column { 
             flex: 1; 
-            min-width: 300px;
-            max-width: 400px; /* Slight limit to keep 5 columns looking neat */
+            min-width: 300px; /* Ensures readability on small screens */
+            /* max-width removed for full fluidity */
         }
 
         .column-title {
@@ -205,8 +205,7 @@
         </header>
 
         <div class="dashboard">
-            <div class="grid-container" id="dynamic-grid">
-                </div>
+            <div class="grid-container" id="dynamic-grid"></div>
         </div>
     </main>
 
@@ -268,7 +267,7 @@
                     if (cols[0].trim() === '') cols.shift();
                     if (cols.length < 4) return null;
                     return {
-                        region: cols[0].trim(), // Not lowering case to keep original formatting for titles
+                        region: cols[0].trim(),
                         name: cols[1].trim(),
                         day: cols[2].trim().toLowerCase(),
                         dateObj: parseTimeToToday(cols[3].trim())
@@ -281,16 +280,13 @@
         function renderDashboard() {
             const now = new Date().getTime();
             const grid = document.getElementById('dynamic-grid');
-            grid.innerHTML = ''; // Clear the grid to rebuild
+            grid.innerHTML = '';
 
-            // 1. Get unique regions from the data
             const uniqueRegions = [...new Set(globalBossData.map(b => b.region))];
 
-            // 2. Sort regions (optional, keeping them in order of appearance)
             uniqueRegions.forEach(regionName => {
                 const filtered = globalBossData.filter(b => b.region === regionName);
                 
-                // Sort bosses within column: Active first, then Expired
                 filtered.sort((a, b) => {
                     const aEnd = a.dateObj.getTime() + 300000;
                     const bEnd = b.dateObj.getTime() + 300000;
@@ -298,7 +294,6 @@
                     return a.dateObj - b.dateObj;
                 });
 
-                // Create the column element
                 const colDiv = document.createElement('div');
                 colDiv.className = 'column';
                 colDiv.innerHTML = `<div class="column-title">${regionName}</div><div class="boss-list"></div>`;
@@ -351,7 +346,6 @@
                         </div>
                     `;
                 });
-
                 grid.appendChild(colDiv);
             });
         }
