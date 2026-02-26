@@ -297,7 +297,21 @@
                 const isMonarch = regionName.toLowerCase() === 'monarch';
                 const filtered = globalBossData.filter(b => b.region === regionName);
                 
-                filtered.sort((a, b) => isMonarch ? a.dateObj - b.dateObj : a.dateObj - b.dateObj);
+                // --- NEW SMART SORTING ---
+                filtered.sort((a, b) => {
+                    if (isMonarch) {
+                        return b.dateObj - a.dateObj; // Sort Monarchs by newest kill
+                    }
+                    const aEnd = a.dateObj.getTime() + 300000;
+                    const bEnd = b.dateObj.getTime() + 300000;
+                    const aExpired = now > aEnd;
+                    const bExpired = now > bEnd;
+
+                    // If one is expired and the other isn't, move the expired one down
+                    if (aExpired !== bExpired) return aExpired ? 1 : -1;
+                    // Otherwise sort by time normally
+                    return a.dateObj - b.dateObj;
+                });
 
                 const colDiv = document.createElement('div');
                 colDiv.className = 'column';
@@ -321,12 +335,10 @@
 
                         const h = Math.floor(diff / 3600000);
                         const m = Math.floor((diff % 3600000) / 60000);
-                        timerHTML = `Since: ${h}h ${m}m`;
-
-                        // NEW LOGIC: Turn red if 3 hours or more
-                        if (h >= 3) {
-                            timerClasses += ' monarch-red';
-                        }
+                        const s = Math.floor((diff % 60000) / 1000);
+                        
+                        timerHTML = `${h}h ${m}m ${s}s`;
+                        if (h >= 3) timerClasses += ' monarch-red';
                     } else {
                         const end = target + 300000;
                         if (now > end) {
