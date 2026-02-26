@@ -13,6 +13,7 @@
             --text-muted: #a0a0a0;
             --accent-main: #9d4edd; 
             --accent-red: #FF6961;
+            --accent-blue: #4cc9f0;
             --border-color: #333333;
             --highlight-bg: rgba(255, 255, 255, 0.03);
         }
@@ -129,8 +130,7 @@
 
         .column { 
             flex: 1; 
-            min-width: 300px; /* Ensures readability on small screens */
-            /* max-width removed for full fluidity */
+            min-width: 300px;
         }
 
         .column-title {
@@ -166,6 +166,10 @@
             background-color: rgba(255, 105, 97, 0.03); 
         }
 
+        .card.monarch-type {
+            border-left: 4px solid var(--accent-blue);
+        }
+
         .card.expired { opacity: 0.25; border-left: 1px solid var(--border-color); }
         .card.expired .timer-box { display: none; }
 
@@ -184,6 +188,7 @@
         }
 
         .spawn-text { color: var(--accent-red) !important; }
+        .monarch-red { color: var(--accent-red) !important; }
     </style>
 </head>
 <body>
@@ -250,8 +255,9 @@
 
         function parseTimeToToday(timeStr) {
             const target = new Date();
-            const [hrs, mins] = timeStr.trim().split(':');
-            target.setHours(parseInt(hrs), parseInt(mins), 0, 0);
+            const parts = timeStr.trim().split(':');
+            if (parts.length < 2) return target;
+            target.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
             return target;
         }
 
@@ -272,7 +278,10 @@
                         day: cols[2].trim().toLowerCase(),
                         dateObj: parseTimeToToday(cols[3].trim())
                     };
-                }).filter(item => item && item.day === today);
+                }).filter(item => {
+                    if (!item) return false;
+                    return item.region.toLowerCase() === 'monarch' || item.day === today;
+                });
                 renderDashboard();
             } catch (err) { console.error(err); }
         }
@@ -285,14 +294,10 @@
             const uniqueRegions = [...new Set(globalBossData.map(b => b.region))];
 
             uniqueRegions.forEach(regionName => {
+                const isMonarch = regionName.toLowerCase() === 'monarch';
                 const filtered = globalBossData.filter(b => b.region === regionName);
                 
-                filtered.sort((a, b) => {
-                    const aEnd = a.dateObj.getTime() + 300000;
-                    const bEnd = b.dateObj.getTime() + 300000;
-                    if ((now > aEnd) !== (now > bEnd)) return now > aEnd ? 1 : -1;
-                    return a.dateObj - b.dateObj;
-                });
+                filtered.sort((a, b) => isMonarch ? a.dateObj - b.dateObj : a.dateObj - b.dateObj);
 
                 const colDiv = document.createElement('div');
                 colDiv.className = 'column';
@@ -303,17 +308,30 @@
 
                 filtered.forEach(boss => {
                     const target = boss.dateObj.getTime();
-                    const end = target + 300000;
                     const timeStr = boss.dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                     
                     let cardClasses = 'card';
                     let timerHTML = '';
                     let timerClasses = 'timer-box';
 
-                    if (now > end) {
-                        cardClasses += ' expired';
+                    if (isMonarch) {
+                        cardClasses += ' monarch-type';
+                        let diff = now - target;
+                        if (diff < 0) diff += 86400000; 
+
+                        const h = Math.floor(diff / 3600000);
+                        const m = Math.floor((diff % 3600000) / 60000);
+                        timerHTML = `Since: ${h}h ${m}m`;
+
+                        // NEW LOGIC: Turn red if 3 hours or more
+                        if (h >= 3) {
+                            timerClasses += ' monarch-red';
+                        }
                     } else {
-                        if (now >= target) {
+                        const end = target + 300000;
+                        if (now > end) {
+                            cardClasses += ' expired';
+                        } else if (now >= target) {
                             cardClasses += ' spawned';
                             timerClasses += ' spawn-text';
                             const d = end - now;
@@ -321,7 +339,6 @@
                         } else {
                             cardClasses += ' active';
                             if (!foundNext) { cardClasses += ' next-up'; foundNext = true; }
-                            
                             if (timersOn) {
                                 const d = target - now;
                                 const h = Math.floor(d/3600000);
@@ -339,7 +356,7 @@
                             <div class="card-header">
                                 <div>
                                     <div class="boss-name">${boss.name}</div>
-                                    <div class="boss-time">${timeStr}</div>
+                                    <div class="boss-time">${isMonarch ? 'Last Kill: ' : 'Time: '}${timeStr}</div>
                                 </div>
                             </div>
                             <div class="${timerClasses}">${timerHTML}</div>
