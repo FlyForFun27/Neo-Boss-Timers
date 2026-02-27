@@ -13,7 +13,6 @@
             --text-muted: #a0a0a0;
             --accent-main: #9d4edd; 
             --accent-red: #FF6961;
-            --accent-blue: #4cc9f0;
             --border-color: #333333;
             --highlight-bg: rgba(255, 255, 255, 0.03);
         }
@@ -166,8 +165,9 @@
             background-color: rgba(255, 105, 97, 0.03); 
         }
 
+        /* Monarch specific style - now uses the theme accent */
         .card.monarch-type {
-            border-left: 4px solid var(--accent-blue);
+            border-left: 4px solid var(--accent-main);
         }
 
         .card.expired { opacity: 0.25; border-left: 1px solid var(--border-color); }
@@ -297,19 +297,13 @@
                 const isMonarch = regionName.toLowerCase() === 'monarch';
                 const filtered = globalBossData.filter(b => b.region === regionName);
                 
-                // --- NEW SMART SORTING ---
                 filtered.sort((a, b) => {
-                    if (isMonarch) {
-                        return b.dateObj - a.dateObj; // Sort Monarchs by newest kill
-                    }
+                    if (isMonarch) return a.dateObj - b.dateObj;
                     const aEnd = a.dateObj.getTime() + 300000;
                     const bEnd = b.dateObj.getTime() + 300000;
                     const aExpired = now > aEnd;
                     const bExpired = now > bEnd;
-
-                    // If one is expired and the other isn't, move the expired one down
                     if (aExpired !== bExpired) return aExpired ? 1 : -1;
-                    // Otherwise sort by time normally
                     return a.dateObj - b.dateObj;
                 });
 
@@ -338,7 +332,11 @@
                         const s = Math.floor((diff % 60000) / 1000);
                         
                         timerHTML = `${h}h ${m}m ${s}s`;
-                        if (h >= 3) timerClasses += ' monarch-red';
+                        
+                        // If it's over 3 hours, flip it to red
+                        if (h >= 3) {
+                            timerClasses += ' monarch-red';
+                        }
                     } else {
                         const end = target + 300000;
                         if (now > end) {
