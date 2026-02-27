@@ -173,7 +173,8 @@
         .card.expired .timer-box { display: none; }
 
         .boss-name { font-weight: 600; font-size: 0.95rem; }
-        .boss-time { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+        .boss-time { font-size: 0.8rem; color: var(--accent-main); margin-top: 4px; }
+        .boss-time.monarch-red { color: var(--accent-red) !important; font-weight: bold; }
         
         .timer-box {
             background-color: #1a1a1a;
@@ -189,8 +190,8 @@
             justify-content: center;
         }
 
+        .timer-box.monarch-red { color: var(--accent-red) !important; }
         .spawn-text { color: var(--accent-red) !important; }
-        .monarch-red { color: var(--accent-red) !important; }
     </style>
 </head>
 <body>
@@ -280,10 +281,7 @@
                         day: cols[2].trim().toLowerCase(),
                         dateObj: parseTimeToToday(cols[3].trim())
                     };
-                }).filter(item => {
-                    if (!item) return false;
-                    return item.region.toLowerCase() === 'monarch' || item.day === today;
-                });
+                }).filter(item => item && item.day === today); // <-- STRICTLY "TODAY" FOR EVERYTHING NOW
                 renderDashboard();
             } catch (err) { console.error(err); }
         }
@@ -327,9 +325,8 @@
                     if (isMonarch) {
                         cardClasses += ' monarch-type';
                         
-                        // 1. Calculate time passed SINCE kill
                         let diffUp = now - target;
-                        if (diffUp < 0) diffUp += 86400000; // Account for midnight rollover
+                        if (diffUp < 0) diffUp += 86400000; 
 
                         const upH = Math.floor(diffUp / 3600000);
                         const upM = Math.floor((diffUp % 3600000) / 60000);
@@ -338,18 +335,13 @@
                         let isOver3h = (upH >= 3);
                         let upColorClass = isOver3h ? 'monarch-red' : '';
                         
-                        // Small subtext: Time passed since kill
                         subTextHTML = `<div class="boss-time ${upColorClass}">Time since kill: ${upH}h ${upM}m ${upS}s</div>`;
 
-                        // 2. Calculate time UNTIL 2.5h window
-                        // Total 2.5 hours = 9,000,000 milliseconds
                         let diffDownMs = 9000000 - diffUp;
 
                         if (diffDownMs <= 0) {
-                            // If it's been longer than 2.5h, display IN WINDOW
                             timerBoxHTML = `<div class="timer-box monarch-red">IN WINDOW</div>`;
                         } else {
-                            // Countdown to 2.5h
                             const downH = Math.floor(diffDownMs / 3600000);
                             const downM = Math.floor((diffDownMs % 3600000) / 60000).toString().padStart(2, '0');
                             const downS = Math.floor((diffDownMs % 60000) / 1000).toString().padStart(2, '0');
@@ -361,7 +353,6 @@
                                 </div>`;
                         }
                     } else {
-                        // Regular Bosses
                         const end = target + 300000;
                         if (now > end) {
                             cardClasses += ' expired';
@@ -386,7 +377,7 @@
                             }
                             timerBoxHTML = `<div class="timer-box">${liveText}</div>`;
                         }
-                        subTextHTML = `<div class="boss-time">Time: ${timeStr}</div>`;
+                        subTextHTML = `<div class="boss-time" style="color: var(--text-muted)">Time: ${timeStr}</div>`;
                     }
 
                     listDiv.innerHTML += `
