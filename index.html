@@ -165,7 +165,6 @@
             background-color: rgba(255, 105, 97, 0.03); 
         }
 
-        /* Monarch specific style - now uses the theme accent */
         .card.monarch-type {
             border-left: 4px solid var(--accent-main);
         }
@@ -175,7 +174,7 @@
 
         .boss-name { font-weight: 600; font-size: 0.95rem; }
         .boss-time { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
-
+        
         .timer-box {
             background-color: #1a1a1a;
             text-align: center;
@@ -185,6 +184,9 @@
             color: var(--accent-main);
             font-weight: bold;
             margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
         .spawn-text { color: var(--accent-red) !important; }
@@ -319,57 +321,81 @@
                     const timeStr = boss.dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                     
                     let cardClasses = 'card';
-                    let timerHTML = '';
-                    let timerClasses = 'timer-box';
+                    let timerBoxHTML = '';
+                    let subTextHTML = '';
 
                     if (isMonarch) {
                         cardClasses += ' monarch-type';
-                        let diff = now - target;
-                        if (diff < 0) diff += 86400000; 
+                        
+                        // 1. Calculate time passed SINCE kill
+                        let diffUp = now - target;
+                        if (diffUp < 0) diffUp += 86400000; // Account for midnight rollover
 
-                        const h = Math.floor(diff / 3600000);
-                        const m = Math.floor((diff % 3600000) / 60000);
-                        const s = Math.floor((diff % 60000) / 1000);
+                        const upH = Math.floor(diffUp / 3600000);
+                        const upM = Math.floor((diffUp % 3600000) / 60000);
+                        const upS = Math.floor((diffUp % 60000) / 1000);
                         
-                        timerHTML = `${h}h ${m}m ${s}s`;
+                        let isOver3h = (upH >= 3);
+                        let upColorClass = isOver3h ? 'monarch-red' : '';
                         
-                        // If it's over 3 hours, flip it to red
-                        if (h >= 3) {
-                            timerClasses += ' monarch-red';
+                        // Small subtext: Time passed since kill
+                        subTextHTML = `<div class="boss-time ${upColorClass}">Time since kill: ${upH}h ${upM}m ${upS}s</div>`;
+
+                        // 2. Calculate time UNTIL 2.5h window
+                        // Total 2.5 hours = 9,000,000 milliseconds
+                        let diffDownMs = 9000000 - diffUp;
+
+                        if (diffDownMs <= 0) {
+                            // If it's been longer than 2.5h, display IN WINDOW
+                            timerBoxHTML = `<div class="timer-box monarch-red">IN WINDOW</div>`;
+                        } else {
+                            // Countdown to 2.5h
+                            const downH = Math.floor(diffDownMs / 3600000);
+                            const downM = Math.floor((diffDownMs % 3600000) / 60000).toString().padStart(2, '0');
+                            const downS = Math.floor((diffDownMs % 60000) / 1000).toString().padStart(2, '0');
+                            
+                            timerBoxHTML = `
+                                <div class="timer-box">
+                                    <div style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Estimated Spawn in</div>
+                                    <div>${downH > 0 ? downH + 'h ' : ''}${downM}m ${downS}s</div>
+                                </div>`;
                         }
                     } else {
+                        // Regular Bosses
                         const end = target + 300000;
                         if (now > end) {
                             cardClasses += ' expired';
+                            timerBoxHTML = `<div class="timer-box" style="display:none;"></div>`;
                         } else if (now >= target) {
                             cardClasses += ' spawned';
-                            timerClasses += ' spawn-text';
                             const d = end - now;
-                            timerHTML = `Spawn in ${Math.floor(d/60000)}m ${Math.floor((d%60000)/1000).toString().padStart(2,'0')}s`;
+                            timerBoxHTML = `<div class="timer-box spawn-text">Spawn in ${Math.floor(d/60000)}m ${Math.floor((d%60000)/1000).toString().padStart(2,'0')}s</div>`;
                         } else {
                             cardClasses += ' active';
                             if (!foundNext) { cardClasses += ' next-up'; foundNext = true; }
+                            
+                            let liveText = "";
                             if (timersOn) {
                                 const d = target - now;
                                 const h = Math.floor(d/3600000);
                                 const m = Math.floor((d%3600000)/60000).toString().padStart(2,'0');
                                 const s = Math.floor((d%60000)/1000).toString().padStart(2,'0');
-                                timerHTML = `${h > 0 ? h + 'h ' : ''}${m}m ${s}s`;
+                                liveText = `${h > 0 ? h + 'h ' : ''}${m}m ${s}s`;
                             } else {
-                                timerHTML = `Announcement at ${timeStr}`;
+                                liveText = `Announcement at ${timeStr}`;
                             }
+                            timerBoxHTML = `<div class="timer-box">${liveText}</div>`;
                         }
+                        subTextHTML = `<div class="boss-time">Time: ${timeStr}</div>`;
                     }
 
                     listDiv.innerHTML += `
                         <div class="${cardClasses}">
                             <div class="card-header">
-                                <div>
-                                    <div class="boss-name">${boss.name}</div>
-                                    <div class="boss-time">${isMonarch ? 'Last Kill: ' : 'Time: '}${timeStr}</div>
-                                </div>
+                                <div class="boss-name">${boss.name}</div>
+                                ${subTextHTML}
                             </div>
-                            <div class="${timerClasses}">${timerHTML}</div>
+                            ${timerBoxHTML}
                         </div>
                     `;
                 });
