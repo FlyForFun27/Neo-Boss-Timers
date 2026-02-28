@@ -320,38 +320,37 @@
                     const row = rows[i];
                     if (!row || typeof row !== 'string') continue;
 
-                    // Super safe parsing: split by comma, ensure everything is a string, then trim
+                    // Split and force EVERY cell to be a String to prevent "not a function" errors
                     const cells = row.split(',').map(cell => String(cell || '').trim());
 
-                    // Fix Google Sheet artifact where first cell is completely blank
                     if (cells.length > 0 && cells === '') {
                         cells.shift();
                     }
 
-                    // Must have at least Region, Name, and Time
                     if (cells.length < 3) continue;
 
-                    const region = cells;
-                    const name = cells;
+                    // Safely cast to string
+                    const region = String(cells || '');
+                    const name = String(cells || '');
                     let day = '';
                     let timeStr = '';
 
                     if (cells.length === 3) {
-                        timeStr = cells;
+                        timeStr = String(cells || '');
                     } else if (cells.length >= 4) {
-                        day = cells.toLowerCase();
-                        timeStr = cells;
+                        // FORCE String type before calling toLowerCase()
+                        day = String(cells || '').toLowerCase();
+                        timeStr = String(cells || '');
                     }
 
-                    // Skip broken Google Sheet cells
                     if (timeStr.includes('#VALUE!')) continue;
 
                     const dateObj = parseTimeToToday(timeStr);
                     
-                    // Skip if the time isn't a real time (like empty string or random letters)
                     if (isNaN(dateObj.getTime())) continue;
 
-                    if (region.toLowerCase() === 'monarch' || day === today) {
+                    // FORCE String type here as well
+                    if (String(region).toLowerCase() === 'monarch' || day === today) {
                         newBossData.push({
                             region: region,
                             name: name,
@@ -380,7 +379,8 @@
                 const uniqueRegions = [...new Set(globalBossData.map(b => b.region))];
 
                 uniqueRegions.forEach(regionName => {
-                    const isMonarch = regionName.toLowerCase() === 'monarch';
+                    // Safe string check
+                    const isMonarch = String(regionName).toLowerCase() === 'monarch';
                     const filtered = globalBossData.filter(b => b.region === regionName);
                     
                     filtered.sort((a, b) => {
@@ -507,3 +507,4 @@
     </script>
 </body>
 </html>
+
