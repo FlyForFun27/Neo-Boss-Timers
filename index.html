@@ -192,42 +192,6 @@
 
         .timer-box.monarch-red { color: var(--accent-red) !important; }
         .spawn-text { color: var(--accent-red) !important; }
-
-        /* Dropdown Styles for other Monarchs */
-        .custom-dropdown {
-            background-color: rgba(255,255,255,0.015);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            margin-top: 15px;
-        }
-        .custom-dropdown summary {
-            padding: 12px 15px;
-            font-weight: 600;
-            cursor: pointer;
-            color: var(--text-muted);
-            list-style: none;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
-        }
-        .custom-dropdown summary::-webkit-details-marker { display: none; }
-        .custom-dropdown summary::after {
-            content: '▼';
-            font-size: 0.8rem;
-            transition: transform 0.3s;
-        }
-        .custom-dropdown[open] summary::after { transform: rotate(180deg); }
-        
-        .custom-dropdown .dropdown-content {
-            padding: 15px;
-            border-top: 1px solid var(--border-color);
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            text-align: center;
-        }
     </style>
 </head>
 <body>
@@ -292,24 +256,11 @@
             document.getElementById('live-clock').textContent = `${h}:${m} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
         }
 
-        // Extremely forgiving time parser with HH:MM:SS support
         function parseTimeToToday(timeStr) {
             const target = new Date();
-            if (!timeStr || String(timeStr).includes('#VALUE!')) return target;
-            
-            // Clean out quotes, etc.
-            const cleanStr = String(timeStr).replace(/['"]/g, '').trim();
-            const parts = cleanStr.split(':');
-            
-            if (parts.length < 2) return target; // Fallback to current time safely
-            
-            const hrs = parseInt(parts);
-            const mins = parseInt(parts);
-            const secs = parts.length > 2 ? parseInt(parts) : 0;
-            
-            if (!isNaN(hrs) && !isNaN(mins)) {
-                target.setHours(hrs, mins, isNaN(secs) ? 0 : secs, 0);
-            }
+            const parts = timeStr.trim().split(':');
+            if (parts.length < 2) return target;
+            target.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
             return target;
         }
 
@@ -321,168 +272,126 @@
                 const today = daysOfWeek[new Date().getDay()].toLowerCase();
 
                 globalBossData = rows.map(row => {
-                    if (!row) return null;
-                    
                     let cols = row.split(',');
-                    // Safely ignore Google Sheets leading empty columns without throwing a trim error
-                    if (cols.length > 0 && String(cols).trim() === '') cols.shift();
-                    
-                    if (cols.length < 3) return null; 
-
-                    let region = String(cols).trim();
-                    let name = String(cols).trim();
-                    let day = '';
-                    let timeStr = '';
-
-                    // Handle Monarchs that might only have 3 columns vs regular bosses with 4
-                    if (cols.length === 3) {
-                        timeStr = String(cols).trim();
-                    } else {
-                        day = String(cols).trim().toLowerCase();
-                        timeStr = String(cols).trim();
-                    }
-
+                    if (cols[0].trim() === '') cols.shift();
+                    if (cols.length < 4) return null;
                     return {
-                        region: region,
-                        name: name,
-                        day: day,
-                        dateObj: parseTimeToToday(timeStr)
+                        region: cols[0].trim(),
+                        name: cols[1].trim(),
+                        day: cols[2].trim().toLowerCase(),
+                        dateObj: parseTimeToToday(cols[3].trim())
                     };
-                }).filter(item => {
-                    if (!item) return false;
-                    return item.region.toLowerCase() === 'monarch' || item.day === today;
-                });
-                
+                }).filter(item => item && item.day === today); // <-- STRICTLY "TODAY" FOR EVERYTHING NOW
                 renderDashboard();
-            } catch (err) { 
-                console.error("Data Load Error:", err); 
-            }
+            } catch (err) { console.error(err); }
         }
 
         function renderDashboard() {
-            try {
-                const now = new Date().getTime();
-                const grid = document.getElementById('dynamic-grid');
-                grid.innerHTML = '';
+            const now = new Date().getTime();
+            const grid = document.getElementById('dynamic-grid');
+            grid.innerHTML = '';
 
-                const uniqueRegions = [...new Set(globalBossData.map(b => b.region))];
+            const uniqueRegions = [...new Set(globalBossData.map(b => b.region))];
 
-                uniqueRegions.forEach(regionName => {
-                    const isMonarch = String(regionName).toLowerCase() === 'monarch';
-                    const filtered = globalBossData.filter(b => b.region === regionName);
+            uniqueRegions.forEach(regionName => {
+                const isMonarch = regionName.toLowerCase() === 'monarch';
+                const filtered = globalBossData.filter(b => b.region === regionName);
+                
+                filtered.sort((a, b) => {
+                    if (isMonarch) return a.dateObj - b.dateObj;
+                    const aEnd = a.dateObj.getTime() + 300000;
+                    const bEnd = b.dateObj.getTime() + 300000;
+                    const aExpired = now > aEnd;
+                    const bExpired = now > bEnd;
+                    if (aExpired !== bExpired) return aExpired ? 1 : -1;
+                    return a.dateObj - b.dateObj;
+                });
+
+                const colDiv = document.createElement('div');
+                colDiv.className = 'column';
+                colDiv.innerHTML = `<div class="column-title">${regionName}</div><div class="boss-list"></div>`;
+                const listDiv = colDiv.querySelector('.boss-list');
+
+                let foundNext = false;
+
+                filtered.forEach(boss => {
+                    const target = boss.dateObj.getTime();
+                    const timeStr = boss.dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                     
-                    filtered.sort((a, b) => {
-                        if (isMonarch) return a.dateObj - b.dateObj;
-                        const aEnd = a.dateObj.getTime() + 300000;
-                        const bEnd = b.dateObj.getTime() + 300000;
-                        const aExpired = now > aEnd;
-                        const bExpired = now > bEnd;
-                        if (aExpired !== bExpired) return aExpired ? 1 : -1;
-                        return a.dateObj - b.dateObj;
-                    });
+                    let cardClasses = 'card';
+                    let timerBoxHTML = '';
+                    let subTextHTML = '';
 
-                    const colDiv = document.createElement('div');
-                    colDiv.className = 'column';
-                    colDiv.innerHTML = `<div class="column-title">${regionName}</div><div class="boss-list"></div>`;
-                    const listDiv = colDiv.querySelector('.boss-list');
-
-                    let foundNext = false;
-
-                    filtered.forEach(boss => {
-                        const target = boss.dateObj.getTime();
-                        // Format the visible time to match your sheet (shows HH:MM:SS if seconds exist)
-                        const timeStr = boss.dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
-                        
-                        let cardClasses = 'card';
-                        let timerBoxHTML = '';
-                        let subTextHTML = '';
-
-                        if (isMonarch) {
-                            cardClasses += ' monarch-type';
-                            
-                            let diffUp = now - target;
-                            if (diffUp < 0) diffUp += 86400000; 
-
-                            const upH = Math.floor(diffUp / 3600000);
-                            const upM = Math.floor((diffUp % 3600000) / 60000);
-                            const upS = Math.floor((diffUp % 60000) / 1000);
-                            
-                            let isOver3h = (upH >= 3);
-                            let upColorClass = isOver3h ? 'monarch-red' : '';
-                            
-                            subTextHTML = `<div class="boss-time ${upColorClass}">Time since kill: ${upH}h ${upM}m ${upS}s</div>`;
-
-                            let diffDownMs = 9000000 - diffUp;
-
-                            if (diffDownMs <= 0) {
-                                timerBoxHTML = `<div class="timer-box monarch-red">IN WINDOW</div>`;
-                            } else {
-                                const downH = Math.floor(diffDownMs / 3600000);
-                                const downM = Math.floor((diffDownMs % 3600000) / 60000).toString().padStart(2, '0');
-                                const downS = Math.floor((diffDownMs % 60000) / 1000).toString().padStart(2, '0');
-                                
-                                timerBoxHTML = `
-                                    <div class="timer-box">
-                                        <div style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Estimated Spawn in</div>
-                                        <div>${downH > 0 ? downH + 'h ' : ''}${downM}m ${downS}s</div>
-                                    </div>`;
-                            }
-                        } else {
-                            const end = target + 300000;
-                            if (now > end) {
-                                cardClasses += ' expired';
-                                timerBoxHTML = `<div class="timer-box" style="display:none;"></div>`;
-                            } else if (now >= target) {
-                                cardClasses += ' spawned';
-                                const d = end - now;
-                                timerBoxHTML = `<div class="timer-box spawn-text">Spawn in ${Math.floor(d/60000)}m ${Math.floor((d%60000)/1000).toString().padStart(2,'0')}s</div>`;
-                            } else {
-                                cardClasses += ' active';
-                                if (!foundNext) { cardClasses += ' next-up'; foundNext = true; }
-                                
-                                let liveText = "";
-                                if (timersOn) {
-                                    const d = target - now;
-                                    const h = Math.floor(d/3600000);
-                                    const m = Math.floor((d%3600000)/60000).toString().padStart(2,'0');
-                                    const s = Math.floor((d%60000)/1000).toString().padStart(2,'0');
-                                    liveText = `${h > 0 ? h + 'h ' : ''}${m}m ${s}s`;
-                                } else {
-                                    liveText = `Announcement at ${timeStr}`;
-                                }
-                                timerBoxHTML = `<div class="timer-box">${liveText}</div>`;
-                            }
-                            subTextHTML = `<div class="boss-time" style="color: var(--text-muted)">Time: ${timeStr}</div>`;
-                        }
-
-                        listDiv.innerHTML += `
-                            <div class="${cardClasses}">
-                                <div class="card-header">
-                                    <div class="boss-name">${boss.name}</div>
-                                    ${subTextHTML}
-                                </div>
-                                ${timerBoxHTML}
-                            </div>
-                        `;
-                    });
-
-                    // --- EMPTY DROPDOWN TEST ---
                     if (isMonarch) {
-                        listDiv.innerHTML += `
-                            <details class="custom-dropdown">
-                                <summary>Other Monarchs Test</summary>
-                                <div class="dropdown-content">
-                                    If you can see this text, the dropdown HTML is perfectly stable!
-                                </div>
-                            </details>
-                        `;
+                        cardClasses += ' monarch-type';
+                        
+                        let diffUp = now - target;
+                        if (diffUp < 0) diffUp += 86400000; 
+
+                        const upH = Math.floor(diffUp / 3600000);
+                        const upM = Math.floor((diffUp % 3600000) / 60000);
+                        const upS = Math.floor((diffUp % 60000) / 1000);
+                        
+                        let isOver3h = (upH >= 3);
+                        let upColorClass = isOver3h ? 'monarch-red' : '';
+                        
+                        subTextHTML = `<div class="boss-time ${upColorClass}">Time since kill: ${upH}h ${upM}m ${upS}s</div>`;
+
+                        let diffDownMs = 9000000 - diffUp;
+
+                        if (diffDownMs <= 0) {
+                            timerBoxHTML = `<div class="timer-box monarch-red">IN WINDOW</div>`;
+                        } else {
+                            const downH = Math.floor(diffDownMs / 3600000);
+                            const downM = Math.floor((diffDownMs % 3600000) / 60000).toString().padStart(2, '0');
+                            const downS = Math.floor((diffDownMs % 60000) / 1000).toString().padStart(2, '0');
+                            
+                            timerBoxHTML = `
+                                <div class="timer-box">
+                                    <div style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Estimated Spawn in</div>
+                                    <div>${downH > 0 ? downH + 'h ' : ''}${downM}m ${downS}s</div>
+                                </div>`;
+                        }
+                    } else {
+                        const end = target + 300000;
+                        if (now > end) {
+                            cardClasses += ' expired';
+                            timerBoxHTML = `<div class="timer-box" style="display:none;"></div>`;
+                        } else if (now >= target) {
+                            cardClasses += ' spawned';
+                            const d = end - now;
+                            timerBoxHTML = `<div class="timer-box spawn-text">Spawn in ${Math.floor(d/60000)}m ${Math.floor((d%60000)/1000).toString().padStart(2,'0')}s</div>`;
+                        } else {
+                            cardClasses += ' active';
+                            if (!foundNext) { cardClasses += ' next-up'; foundNext = true; }
+                            
+                            let liveText = "";
+                            if (timersOn) {
+                                const d = target - now;
+                                const h = Math.floor(d/3600000);
+                                const m = Math.floor((d%3600000)/60000).toString().padStart(2,'0');
+                                const s = Math.floor((d%60000)/1000).toString().padStart(2,'0');
+                                liveText = `${h > 0 ? h + 'h ' : ''}${m}m ${s}s`;
+                            } else {
+                                liveText = `Announcement at ${timeStr}`;
+                            }
+                            timerBoxHTML = `<div class="timer-box">${liveText}</div>`;
+                        }
+                        subTextHTML = `<div class="boss-time" style="color: var(--text-muted)">Time: ${timeStr}</div>`;
                     }
 
-                    grid.appendChild(colDiv);
+                    listDiv.innerHTML += `
+                        <div class="${cardClasses}">
+                            <div class="card-header">
+                                <div class="boss-name">${boss.name}</div>
+                                ${subTextHTML}
+                            </div>
+                            ${timerBoxHTML}
+                        </div>
+                    `;
                 });
-            } catch (err) {
-                console.error("Render Error:", err);
-            }
+                grid.appendChild(colDiv);
+            });
         }
 
         window.onload = () => {
