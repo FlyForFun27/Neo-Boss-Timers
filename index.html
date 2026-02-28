@@ -295,7 +295,7 @@
         function parseTimeToToday(timeStr) {
             if (!timeStr) return new Date();
             const target = new Date();
-            const parts = timeStr.trim().split(':');
+            const parts = String(timeStr).trim().split(':');
             if (parts.length < 2) return target;
             target.setHours(parseInt(parts) || 0, parseInt(parts) || 0, 0, 0);
             return target;
@@ -309,19 +309,44 @@
                 const today = daysOfWeek[new Date().getDay()].toLowerCase();
 
                 globalBossData = rows.map(row => {
-                    let cols = row.split(',');
-                    if (cols && cols.trim() === '') cols.shift();
-                    if (cols.length < 4) return null;
+                    if (!row || typeof row !== 'string') return null;
+                    
+                    // BULLETPROOF PARSING: Safely convert every column to a string and trim it
+                    let cols = row.split(',').map(c => String(c).trim());
+                    
+                    if (cols.length > 0 && cols === '') cols.shift();
+                    if (cols.length < 2) return null; // Ignore completely blank rows
+
+                    let region = cols || 'Unknown';
+                    let name = cols || 'Unknown';
+                    let day = '';
+                    let timeStr = '';
+
+                    // Gracefully handle if Day column is skipped for Monarchs
+                    if (cols.length === 3) {
+                        timeStr = cols;
+                    } else if (cols.length >= 4) {
+                        day = cols.toLowerCase();
+                        timeStr = cols;
+                    }
+
                     return {
-                        region: cols.trim(),
-                        name: cols.trim(),
-                        day: cols.trim().toLowerCase(),
-                        dateObj: parseTimeToToday(cols.trim())
+                        region: region,
+                        name: name,
+                        day: day,
+                        dateObj: parseTimeToToday(timeStr)
                     };
-                }).filter(item => item && item.day === today); // Strict Weekday Filter
+                }).filter(item => {
+                    if (!item) return false;
+                    return item.region.toLowerCase() === 'monarch' || item.day === today;
+                });
+                
                 renderDashboard();
             } catch (err) { 
-                document.getElementById('dynamic-grid').innerHTML = `<div style="color:var(--accent-red); font-size:1.2rem; padding: 20px;"><b>Data Load Error:</b> ${err.message}</div>`;
+                document.getElementById('dynamic-grid').innerHTML = `
+                    <div style="color:var(--accent-red); font-size:1rem; padding: 20px;">
+                        <b>Data Load Error:</b> ${err.message}
+                    </div>`;
             }
         }
 
@@ -431,13 +456,13 @@
                         `;
                     });
 
-                    // --- THE EMPTY DROPDOWN TEST ---
+                    // --- EMPTY DROPDOWN TEST ---
                     if (isMonarch) {
                         listDiv.innerHTML += `
                             <details class="custom-dropdown">
                                 <summary>Other Monarchs Test</summary>
                                 <div class="dropdown-content">
-                                    If you can see this, the layout did not break!
+                                    If you can see this text, the dropdown HTML is perfectly stable!
                                 </div>
                             </details>
                         `;
@@ -446,12 +471,9 @@
                     grid.appendChild(colDiv);
                 });
             } catch (err) {
-                // If the layout breaks, print the exact error here instead of a blank screen
                 document.getElementById('dynamic-grid').innerHTML = `
-                    <div style="color:var(--accent-red); font-size:1.1rem; padding: 20px; text-align: left; background: #1a1a1a; border-radius: 8px;">
-                        <b>Crash Detected in renderDashboard:</b><br><br>
-                        ${err.message}<br><br>
-                        <span style="font-size: 0.85rem; color: #a0a0a0;">${err.stack}</span>
+                    <div style="color:var(--accent-red); font-size:1rem; padding: 20px; background: #1a1a1a; border-radius: 8px;">
+                        <b>Render Error:</b><br>${err.message}
                     </div>`;
             }
         }
