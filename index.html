@@ -198,7 +198,7 @@
             background-color: rgba(255,255,255,0.015);
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            margin-top: 15px;
+            margin-bottom: 15px; /* Added slight margin */
         }
         .custom-dropdown summary {
             padding: 12px 15px;
@@ -292,12 +292,19 @@
             document.getElementById('live-clock').textContent = `${h}:${m} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
         }
 
+        // Extremely safe time parser
         function parseTimeToToday(timeStr) {
-            if (!timeStr) return new Date();
+            if (!timeStr || String(timeStr).includes('#VALUE!')) return new Date(NaN); // Returns an explicitly "Invalid" Date
             const target = new Date();
             const parts = String(timeStr).trim().split(':');
-            if (parts.length < 2) return target;
-            target.setHours(parseInt(parts) || 0, parseInt(parts) || 0, 0, 0);
+            if (parts.length < 2) return new Date(NaN);
+            
+            const hrs = parseInt(parts);
+            const mins = parseInt(parts);
+            
+            if (isNaN(hrs) || isNaN(mins)) return new Date(NaN);
+            
+            target.setHours(hrs, mins, 0, 0);
             return target;
         }
 
@@ -311,18 +318,17 @@
                 globalBossData = rows.map(row => {
                     if (!row || typeof row !== 'string') return null;
                     
-                    // BULLETPROOF PARSING: Safely convert every column to a string and trim it
                     let cols = row.split(',').map(c => String(c).trim());
                     
+                    // Clean up Google Sheet CSV quirks
                     if (cols.length > 0 && cols === '') cols.shift();
-                    if (cols.length < 2) return null; // Ignore completely blank rows
+                    if (cols.length < 2) return null;
 
                     let region = cols || 'Unknown';
                     let name = cols || 'Unknown';
                     let day = '';
                     let timeStr = '';
 
-                    // Gracefully handle if Day column is skipped for Monarchs
                     if (cols.length === 3) {
                         timeStr = cols;
                     } else if (cols.length >= 4) {
@@ -334,10 +340,14 @@
                         region: region,
                         name: name,
                         day: day,
-                        dateObj: parseTimeToToday(timeStr)
+                        dateObj: parseTimeToToday(timeStr) // Validates data format immediately
                     };
                 }).filter(item => {
                     if (!item) return false;
+                    
+                    // NEW: If the date object is invalid (e.g., from #VALUE!), discard the row entirely!
+                    if (isNaN(item.dateObj.getTime())) return false;
+                    
                     return item.region.toLowerCase() === 'monarch' || item.day === today;
                 });
                 
