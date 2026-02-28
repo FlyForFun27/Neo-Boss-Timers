@@ -218,7 +218,7 @@
     </main>
 
     <script>
-        const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtRlBFHRViiLrjzmlEvxgI8-1UNwfrJWJU7fsej4eO6dLOEEzozvd_03KmgWhAIZonrzb2QupMcvVK/pub?gid=0&single=true&output=csv';
+        const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtRlBFHRViiLrjzmlEvxgI8-1UNwfrJWJU7fsej4eO6dLOEEzozvd_03KmgWhAIZonrzb2QupMcvVK/pub?output=csv';
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const themes = ['#9d4edd', '#4cc9f0', '#f72585', '#4ade80', '#fbbf24', '#f87171', '#818cf8', '#d1d1d1'];
         
@@ -260,7 +260,7 @@
             const target = new Date();
             const parts = timeStr.trim().split(':');
             if (parts.length < 2) return target;
-            target.setHours(parseInt(parts), parseInt(parts), 0, 0);
+            target.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
             return target;
         }
 
@@ -269,40 +269,25 @@
                 const response = await fetch(sheetUrl);
                 const data = await response.text();
                 const rows = data.split('\n').slice(1);
-                
-                const todayIndex = new Date().getDay();
-                const yesterdayIndex = (todayIndex + 6) % 7; // Wraps around correctly (e.g. Sun->Sat)
-                
-                const today = daysOfWeek[todayIndex].toLowerCase();
-                const yesterday = daysOfWeek[yesterdayIndex].toLowerCase();
+                const today = daysOfWeek[new Date().getDay()].toLowerCase();
 
                 globalBossData = rows.map(row => {
                     let cols = row.split(',');
-                    if (cols.trim() === '') cols.shift();
+                    if (cols[0].trim() === '') cols.shift();
                     if (cols.length < 4) return null;
                     return {
-                        region: cols.trim(),
-                        name: cols.trim(),
-                        day: cols.trim().toLowerCase(),
-                        dateObj: parseTimeToToday(cols.trim())
+                        region: cols[0].trim(),
+                        name: cols[1].trim(),
+                        day: cols[2].trim().toLowerCase(),
+                        dateObj: parseTimeToToday(cols[3].trim())
                     };
-                }).filter(item => {
-                    if (!item) return false;
-                    // Keep Today's bosses, PLUS Yesterday's Monarchs for the new summary box
-                    if (item.region.toLowerCase() === 'monarch') {
-                        return item.day === today || item.day === yesterday;
-                    }
-                    return item.day === today;
-                });
+                }).filter(item => item && item.day === today); // <-- STRICTLY "TODAY" FOR EVERYTHING NOW
                 renderDashboard();
             } catch (err) { console.error(err); }
         }
 
         function renderDashboard() {
             const now = new Date().getTime();
-            const todayStr = daysOfWeek[new Date().getDay()].toLowerCase();
-            const yesterdayStr = daysOfWeek[(new Date().getDay() + 6) % 7].toLowerCase();
-            
             const grid = document.getElementById('dynamic-grid');
             grid.innerHTML = '';
 
@@ -312,20 +297,30 @@
                 const isMonarch = regionName.toLowerCase() === 'monarch';
                 const filtered = globalBossData.filter(b => b.region === regionName);
                 
+                filtered.sort((a, b) => {
+                    if (isMonarch) return a.dateObj - b.dateObj;
+                    const aEnd = a.dateObj.getTime() + 300000;
+                    const bEnd = b.dateObj.getTime() + 300000;
+                    const aExpired = now > aEnd;
+                    const bExpired = now > bEnd;
+                    if (aExpired !== bExpired) return aExpired ? 1 : -1;
+                    return a.dateObj - b.dateObj;
+                });
+
                 const colDiv = document.createElement('div');
                 colDiv.className = 'column';
                 colDiv.innerHTML = `<div class="column-title">${regionName}</div><div class="boss-list"></div>`;
                 const listDiv = colDiv.querySelector('.boss-list');
 
-                // Reusable function to build the main cards
-                const createCard = (boss) => {
+                let foundNext = false;
+
+                filtered.forEach(boss => {
                     const target = boss.dateObj.getTime();
                     const timeStr = boss.dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                     
                     let cardClasses = 'card';
                     let timerBoxHTML = '';
                     let subTextHTML = '';
-                    let foundNext = false; // localized for the closure
 
                     if (isMonarch) {
                         cardClasses += ' monarch-type';
@@ -368,10 +363,7 @@
                             timerBoxHTML = `<div class="timer-box spawn-text">Spawn in ${Math.floor(d/60000)}m ${Math.floor((d%60000)/1000).toString().padStart(2,'0')}s</div>`;
                         } else {
                             cardClasses += ' active';
-                            
-                            // Check for next-up (requires tracking outside this function slightly differently, 
-                            // but for stability we will apply it simply via CSS check later if needed, 
-                            // or rely on active state as it currently functions).
+                            if (!foundNext) { cardClasses += ' next-up'; foundNext = true; }
                             
                             let liveText = "";
                             if (timersOn) {
@@ -388,7 +380,7 @@
                         subTextHTML = `<div class="boss-time" style="color: var(--text-muted)">Time: ${timeStr}</div>`;
                     }
 
-                    return `
+                    listDiv.innerHTML += `
                         <div class="${cardClasses}">
                             <div class="card-header">
                                 <div class="boss-name">${boss.name}</div>
@@ -397,73 +389,7 @@
                             ${timerBoxHTML}
                         </div>
                     `;
-                };
-
-                // Apply rendering logic based on region type
-                if (isMonarch) {
-                    const todayBosses = filtered.filter(b => b.day === todayStr);
-                    const yesterdayBosses = filtered.filter(b => b.day === yesterdayStr);
-
-                    // Sort and render today's Monarchs normally
-                    todayBosses.sort((a, b) => a.dateObj - b.dateObj);
-                    todayBosses.forEach(boss => { listDiv.innerHTML += createCard(boss); });
-
-                    // Generate the "Yesterday's Kills" box if data exists
-                    if (yesterdayBosses.length > 0) {
-                        const lastKills = {};
-                        
-                        // Find the latest time for each channel
-                        yesterdayBosses.forEach(b => {
-                            if (!lastKills[b.name] || b.dateObj > lastKills[b.name].dateObj) {
-                                lastKills[b.name] = b;
-                            }
-                        });
-
-                        let yesterdayHTML = `
-                            <div class="card" style="opacity: 0.75; margin-top: 25px; border-color: var(--border-color); background: rgba(0,0,0,0.2);">
-                                <div style="font-size: 0.85rem; text-transform: uppercase; font-weight: 600; color: var(--text-muted); margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
-                                    Yesterday's Last Kills
-                                </div>`;
-
-                        // Sort channels alphabetically and add to the box
-                        Object.values(lastKills).sort((a, b) => a.name.localeCompare(b.name)).forEach(b => {
-                            const tStr = b.dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-                            yesterdayHTML += `
-                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 6px;">
-                                    <span style="color: var(--text-muted);">${b.name}</span>
-                                    <span style="color: var(--accent-main); font-weight: bold; background: #1a1a1a; padding: 3px 8px; border-radius: 3px;">${tStr}</span>
-                                </div>`;
-                        });
-
-                        yesterdayHTML += `</div>`;
-                        listDiv.innerHTML += yesterdayHTML;
-                    }
-                } else {
-                    // Regular Boss Sort and Render
-                    filtered.sort((a, b) => {
-                        const aEnd = a.dateObj.getTime() + 300000;
-                        const bEnd = b.dateObj.getTime() + 300000;
-                        const aExpired = now > aEnd;
-                        const bExpired = now > bEnd;
-                        if (aExpired !== bExpired) return aExpired ? 1 : -1;
-                        return a.dateObj - b.dateObj;
-                    });
-                    
-                    let foundNext = false;
-                    filtered.forEach((boss, index) => { 
-                        // Simplified next-up highlight logic specifically for regular bosses
-                        const target = boss.dateObj.getTime();
-                        if (now < target && !foundNext) {
-                            foundNext = true;
-                        }
-                        listDiv.innerHTML += createCard(boss); 
-                        // Manually inject next-up class to the last added element if it triggered
-                        if (now < target && foundNext && index === filtered.findIndex(b => now < b.dateObj.getTime())) {
-                            listDiv.lastElementChild.classList.add('next-up');
-                        }
-                    });
-                }
-
+                });
                 grid.appendChild(colDiv);
             });
         }
