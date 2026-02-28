@@ -1,404 +1,404 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neo Boss Timers</title>
-    <style>
-        :root {
-            --bg-dark: #121212;
-            --bg-panel: #1e1e1e;
-            --bg-card: #252526;
-            --text-main: #ffffff;
-            --text-muted: #a0a0a0;
-            --accent-main: #9d4edd; 
-            --accent-red: #FF6961;
-            --border-color: #333333;
-            --highlight-bg: rgba(255, 255, 255, 0.03);
-        }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neo Boss Timers</title>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --bg-panel: #1e1e1e;
+            --bg-card: #252526;
+            --text-main: #ffffff;
+            --text-muted: #a0a0a0;
+            --accent-main: #9d4edd; 
+            --accent-red: #FF6961;
+            --border-color: #333333;
+            --highlight-bg: rgba(255, 255, 255, 0.03);
+        }
 
-        body {
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-main);
-            display: flex;
-            height: 100vh;
-        }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+        }
 
-        .main-content {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-        }
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 30px;
-            background-color: var(--bg-panel);
-            border-bottom: 1px solid var(--border-color);
-        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+        }
 
-        .header-logo {
-            font-size: 1.3rem;
-            font-weight: bold;
-            letter-spacing: 0.5px;
-            color: var(--accent-main);
-            transition: color 0.3s;
-        }
+        .header-logo {
+            font-size: 1.3rem;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            color: var(--accent-main);
+            transition: color 0.3s;
+        }
 
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
 
-        .theme-selector {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: #2a2a2a;
-            padding: 7px 12px;
-            border-radius: 20px;
-            border: 1px solid var(--border-color);
-        }
+        .theme-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #2a2a2a;
+            padding: 7px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+        }
 
-        .color-dot {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: transform 0.2s;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
+        .color-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
 
-        .color-dot:hover { transform: scale(1.3); }
+        .color-dot:hover { transform: scale(1.3); }
 
-        .toggle-container {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
 
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 34px;
-            height: 18px;
-        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 34px;
+            height: 18px;
+        }
 
-        .switch input { opacity: 0; width: 0; height: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
 
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #333;
-            transition: .3s;
-            border-radius: 20px;
-        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333;
+            transition: .3s;
+            border-radius: 20px;
+        }
 
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 12px; width: 12px;
-            left: 3px; bottom: 3px;
-            background-color: white;
-            transition: .3s;
-            border-radius: 50%;
-            z-index: 2;
-        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 12px; width: 12px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+            z-index: 2;
+        }
 
-        input:checked + .slider { background-color: var(--accent-main); }
-        input:checked + .slider:before { transform: translateX(16px); }
+        input:checked + .slider { background-color: var(--accent-main); }
+        input:checked + .slider:before { transform: translateX(16px); }
 
-        .dashboard { padding: 30px; }
-        
-        .grid-container { 
-            display: flex; 
-            gap: 20px; 
-            flex-wrap: wrap; 
-            justify-content: center; 
-            max-width: 100%;
-        }
+        .dashboard { padding: 30px; }
+        
+        .grid-container { 
+            display: flex; 
+            gap: 20px; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+            max-width: 100%;
+        }
 
-        .column { 
-            flex: 1; 
-            min-width: 300px;
-        }
+        .column { 
+            flex: 1; 
+            min-width: 300px;
+        }
 
-        .column-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            margin-bottom: 15px;
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 5px;
-        }
+        .column-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 5px;
+        }
 
-        .card {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 15px;
-            margin-bottom: 15px;
-            position: relative;
-            transition: border 0.2s ease;
-        }
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+            transition: border 0.2s ease;
+        }
 
-        .card.next-up {
-            background-color: var(--highlight-bg);
-            border-color: var(--accent-main);
-        }
+        .card.next-up {
+            background-color: var(--highlight-bg);
+            border-color: var(--accent-main);
+        }
 
-        .card.active { border-left: 4px solid var(--accent-main); }
+        .card.active { border-left: 4px solid var(--accent-main); }
 
-        .card.spawned { 
-            border: 1px solid var(--accent-red); 
-            border-left: 5px solid var(--accent-red); 
-            background-color: rgba(255, 105, 97, 0.03); 
-        }
+        .card.spawned { 
+            border: 1px solid var(--accent-red); 
+            border-left: 5px solid var(--accent-red); 
+            background-color: rgba(255, 105, 97, 0.03); 
+        }
 
-        .card.monarch-type {
-            border-left: 4px solid var(--accent-main);
-        }
+        .card.monarch-type {
+            border-left: 4px solid var(--accent-main);
+        }
 
-        .card.expired { opacity: 0.25; border-left: 1px solid var(--border-color); }
-        .card.expired .timer-box { display: none; }
+        .card.expired { opacity: 0.25; border-left: 1px solid var(--border-color); }
+        .card.expired .timer-box { display: none; }
 
-        .boss-name { font-weight: 600; font-size: 0.95rem; }
-        .boss-time { font-size: 0.8rem; color: var(--accent-main); margin-top: 4px; }
-        .boss-time.monarch-red { color: var(--accent-red) !important; font-weight: bold; }
-        
-        .timer-box {
-            background-color: #1a1a1a;
-            text-align: center;
-            padding: 12px;
-            border-radius: 4px;
-            font-size: 1.1rem;
-            color: var(--accent-main);
-            font-weight: bold;
-            margin-top: 10px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
+        .boss-name { font-weight: 600; font-size: 0.95rem; }
+        .boss-time { font-size: 0.8rem; color: var(--accent-main); margin-top: 4px; }
+        .boss-time.monarch-red { color: var(--accent-red) !important; font-weight: bold; }
+        
+        .timer-box {
+            background-color: #1a1a1a;
+            text-align: center;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 1.1rem;
+            color: var(--accent-main);
+            font-weight: bold;
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
 
-        .timer-box.monarch-red { color: var(--accent-red) !important; }
-        .spawn-text { color: var(--accent-red) !important; }
-    </style>
+        .timer-box.monarch-red { color: var(--accent-red) !important; }
+        .spawn-text { color: var(--accent-red) !important; }
+    </style>
 </head>
 <body>
 
-    <main class="main-content">
-        <header class="header">
-            <div class="header-logo">Neo Boss Timers</div>
-            <div class="header-right">
-                <div class="theme-selector" id="theme-selector"></div>
-                <div class="toggle-container">
-                    <span>Timer</span>
-                    <label class="switch">
-                        <input type="checkbox" id="timer-toggle">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <span id="live-clock" style="font-size: 0.9rem; font-weight: 500;">--:-- --</span>
-            </div>
-        </header>
+    <main class="main-content">
+        <header class="header">
+            <div class="header-logo">Neo Boss Timers</div>
+            <div class="header-right">
+                <div class="theme-selector" id="theme-selector"></div>
+                <div class="toggle-container">
+                    <span>Timer</span>
+                    <label class="switch">
+                        <input type="checkbox" id="timer-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <span id="live-clock" style="font-size: 0.9rem; font-weight: 500;">--:-- --</span>
+            </div>
+        </header>
 
-        <div class="dashboard">
-            <div class="grid-container" id="dynamic-grid"></div>
-        </div>
-    </main>
+        <div class="dashboard">
+            <div class="grid-container" id="dynamic-grid"></div>
+        </div>
+    </main>
 
-    <script>
-        const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtRlBFHRViiLrjzmlEvxgI8-1UNwfrJWJU7fsej4eO6dLOEEzozvd_03KmgWhAIZonrzb2QupMcvVK/pub?gid=0&single=true&output=csv';
-        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const themes = ['#9d4edd', '#4cc9f0', '#f72585', '#4ade80', '#fbbf24', '#f87171', '#818cf8', '#d1d1d1'];
-        
-        let globalBossData = [];
-        let timersOn = localStorage.getItem('timersOn') !== 'false';
-        let currentAccent = localStorage.getItem('accentColor') || '#9d4edd';
+    <script>
+        const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtRlBFHRViiLrjzmlEvxgI8-1UNwfrJWJU7fsej4eO6dLOEEzozvd_03KmgWhAIZonrzb2QupMcvVK/pub?output=csv';
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const themes = ['#9d4edd', '#4cc9f0', '#f72585', '#4ade80', '#fbbf24', '#f87171', '#818cf8', '#d1d1d1'];
+        
+        let globalBossData = [];
+        let timersOn = localStorage.getItem('timersOn') !== 'false';
+        let currentAccent = localStorage.getItem('accentColor') || '#9d4edd';
 
-        function applyTheme(color) {
-            currentAccent = color;
-            document.documentElement.style.setProperty('--accent-main', color);
-            localStorage.setItem('accentColor', color);
-        }
+        function applyTheme(color) {
+            currentAccent = color;
+            document.documentElement.style.setProperty('--accent-main', color);
+            localStorage.setItem('accentColor', color);
+        }
 
-        const themeContainer = document.getElementById('theme-selector');
-        themes.forEach(color => {
-            const dot = document.createElement('div');
-            dot.className = 'color-dot';
-            dot.style.backgroundColor = color;
-            dot.onclick = () => applyTheme(color);
-            themeContainer.appendChild(dot);
-        });
-        applyTheme(currentAccent);
+        const themeContainer = document.getElementById('theme-selector');
+        themes.forEach(color => {
+            const dot = document.createElement('div');
+            dot.className = 'color-dot';
+            dot.style.backgroundColor = color;
+            dot.onclick = () => applyTheme(color);
+            themeContainer.appendChild(dot);
+        });
+        applyTheme(currentAccent);
 
-        document.getElementById('timer-toggle').checked = timersOn;
-        document.getElementById('timer-toggle').addEventListener('change', (e) => {
-            timersOn = e.target.checked;
-            localStorage.setItem('timersOn', timersOn);
-            renderDashboard();
-        });
+        document.getElementById('timer-toggle').checked = timersOn;
+        document.getElementById('timer-toggle').addEventListener('change', (e) => {
+            timersOn = e.target.checked;
+            localStorage.setItem('timersOn', timersOn);
+            renderDashboard();
+        });
 
-        function updateClock() {
-            const now = new Date();
-            let h = now.getHours() % 12 || 12;
-            let m = now.getMinutes().toString().padStart(2, '0');
-            document.getElementById('live-clock').textContent = `${h}:${m} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
-        }
+        function updateClock() {
+            const now = new Date();
+            let h = now.getHours() % 12 || 12;
+            let m = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('live-clock').textContent = `${h}:${m} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
+        }
 
-        function parseTimeToToday(timeStr) {
-            const target = new Date();
-            const parts = timeStr.trim().split(':');
-            if (parts.length < 2) return target;
-            target.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
-            return target;
-        }
+        function parseTimeToToday(timeStr) {
+            const target = new Date();
+            const parts = timeStr.trim().split(':');
+            if (parts.length < 2) return target;
+            target.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
+            return target;
+        }
 
-        async function loadSheetData() {
-            try {
-                const response = await fetch(sheetUrl);
-                const data = await response.text();
-                const rows = data.split('\n').slice(1);
-                const today = daysOfWeek[new Date().getDay()].toLowerCase();
+        async function loadSheetData() {
+            try {
+                const response = await fetch(sheetUrl);
+                const data = await response.text();
+                const rows = data.split('\n').slice(1);
+                const today = daysOfWeek[new Date().getDay()].toLowerCase();
 
-                globalBossData = rows.map(row => {
-                    let cols = row.split(',');
-                    if (cols[0].trim() === '') cols.shift();
-                    if (cols.length < 4) return null;
-                    return {
-                        region: cols[0].trim(),
-                        name: cols[1].trim(),
-                        day: cols[2].trim().toLowerCase(),
-                        dateObj: parseTimeToToday(cols[3].trim())
-                    };
-                }).filter(item => item && item.day === today); // <-- STRICTLY "TODAY" FOR EVERYTHING NOW
-                renderDashboard();
-            } catch (err) { console.error(err); }
-        }
+                globalBossData = rows.map(row => {
+                    let cols = row.split(',');
+                    if (cols[0].trim() === '') cols.shift();
+                    if (cols.length < 4) return null;
+                    return {
+                        region: cols[0].trim(),
+                        name: cols[1].trim(),
+                        day: cols[2].trim().toLowerCase(),
+                        dateObj: parseTimeToToday(cols[3].trim())
+                    };
+                }).filter(item => item && item.day === today); // <-- STRICTLY "TODAY" FOR EVERYTHING NOW
+                renderDashboard();
+            } catch (err) { console.error(err); }
+        }
 
-        function renderDashboard() {
-            const now = new Date().getTime();
-            const grid = document.getElementById('dynamic-grid');
-            grid.innerHTML = '';
+        function renderDashboard() {
+            const now = new Date().getTime();
+            const grid = document.getElementById('dynamic-grid');
+            grid.innerHTML = '';
 
-            const uniqueRegions = [...new Set(globalBossData.map(b => b.region))];
+            const uniqueRegions = [...new Set(globalBossData.map(b => b.region))];
 
-            uniqueRegions.forEach(regionName => {
-                const isMonarch = regionName.toLowerCase() === 'monarch';
-                const filtered = globalBossData.filter(b => b.region === regionName);
-                
-                filtered.sort((a, b) => {
-                    if (isMonarch) return a.dateObj - b.dateObj;
-                    const aEnd = a.dateObj.getTime() + 300000;
-                    const bEnd = b.dateObj.getTime() + 300000;
-                    const aExpired = now > aEnd;
-                    const bExpired = now > bEnd;
-                    if (aExpired !== bExpired) return aExpired ? 1 : -1;
-                    return a.dateObj - b.dateObj;
-                });
+            uniqueRegions.forEach(regionName => {
+                const isMonarch = regionName.toLowerCase() === 'monarch';
+                const filtered = globalBossData.filter(b => b.region === regionName);
+                
+                filtered.sort((a, b) => {
+                    if (isMonarch) return a.dateObj - b.dateObj;
+                    const aEnd = a.dateObj.getTime() + 300000;
+                    const bEnd = b.dateObj.getTime() + 300000;
+                    const aExpired = now > aEnd;
+                    const bExpired = now > bEnd;
+                    if (aExpired !== bExpired) return aExpired ? 1 : -1;
+                    return a.dateObj - b.dateObj;
+                });
 
-                const colDiv = document.createElement('div');
-                colDiv.className = 'column';
-                colDiv.innerHTML = `<div class="column-title">${regionName}</div><div class="boss-list"></div>`;
-                const listDiv = colDiv.querySelector('.boss-list');
+                const colDiv = document.createElement('div');
+                colDiv.className = 'column';
+                colDiv.innerHTML = `<div class="column-title">${regionName}</div><div class="boss-list"></div>`;
+                const listDiv = colDiv.querySelector('.boss-list');
 
-                let foundNext = false;
+                let foundNext = false;
 
-                filtered.forEach(boss => {
-                    const target = boss.dateObj.getTime();
-                    const timeStr = boss.dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-                    
-                    let cardClasses = 'card';
-                    let timerBoxHTML = '';
-                    let subTextHTML = '';
+                filtered.forEach(boss => {
+                    const target = boss.dateObj.getTime();
+                    const timeStr = boss.dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                    
+                    let cardClasses = 'card';
+                    let timerBoxHTML = '';
+                    let subTextHTML = '';
 
-                    if (isMonarch) {
-                        cardClasses += ' monarch-type';
-                        
-                        let diffUp = now - target;
-                        if (diffUp < 0) diffUp += 86400000; 
+                    if (isMonarch) {
+                        cardClasses += ' monarch-type';
+                        
+                        let diffUp = now - target;
+                        if (diffUp < 0) diffUp += 86400000; 
 
-                        const upH = Math.floor(diffUp / 3600000);
-                        const upM = Math.floor((diffUp % 3600000) / 60000);
-                        const upS = Math.floor((diffUp % 60000) / 1000);
-                        
-                        let isOver3h = (upH >= 3);
-                        let upColorClass = isOver3h ? 'monarch-red' : '';
-                        
-                        subTextHTML = `<div class="boss-time ${upColorClass}">Time since kill: ${upH}h ${upM}m ${upS}s</div>`;
+                        const upH = Math.floor(diffUp / 3600000);
+                        const upM = Math.floor((diffUp % 3600000) / 60000);
+                        const upS = Math.floor((diffUp % 60000) / 1000);
+                        
+                        let isOver3h = (upH >= 3);
+                        let upColorClass = isOver3h ? 'monarch-red' : '';
+                        
+                        subTextHTML = `<div class="boss-time ${upColorClass}">Time since kill: ${upH}h ${upM}m ${upS}s</div>`;
 
-                        let diffDownMs = 9000000 - diffUp;
+                        let diffDownMs = 9000000 - diffUp;
 
-                        if (diffDownMs <= 0) {
-                            timerBoxHTML = `<div class="timer-box monarch-red">IN WINDOW</div>`;
-                        } else {
-                            const downH = Math.floor(diffDownMs / 3600000);
-                            const downM = Math.floor((diffDownMs % 3600000) / 60000).toString().padStart(2, '0');
-                            const downS = Math.floor((diffDownMs % 60000) / 1000).toString().padStart(2, '0');
-                            
-                            timerBoxHTML = `
-                                <div class="timer-box">
-                                    <div style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Estimated Spawn in</div>
-                                    <div>${downH > 0 ? downH + 'h ' : ''}${downM}m ${downS}s</div>
-                                </div>`;
-                        }
-                    } else {
-                        const end = target + 300000;
-                        if (now > end) {
-                            cardClasses += ' expired';
-                            timerBoxHTML = `<div class="timer-box" style="display:none;"></div>`;
-                        } else if (now >= target) {
-                            cardClasses += ' spawned';
-                            const d = end - now;
-                            timerBoxHTML = `<div class="timer-box spawn-text">Spawn in ${Math.floor(d/60000)}m ${Math.floor((d%60000)/1000).toString().padStart(2,'0')}s</div>`;
-                        } else {
-                            cardClasses += ' active';
-                            if (!foundNext) { cardClasses += ' next-up'; foundNext = true; }
-                            
-                            let liveText = "";
-                            if (timersOn) {
-                                const d = target - now;
-                                const h = Math.floor(d/3600000);
-                                const m = Math.floor((d%3600000)/60000).toString().padStart(2,'0');
-                                const s = Math.floor((d%60000)/1000).toString().padStart(2,'0');
-                                liveText = `${h > 0 ? h + 'h ' : ''}${m}m ${s}s`;
-                            } else {
-                                liveText = `Announcement at ${timeStr}`;
-                            }
-                            timerBoxHTML = `<div class="timer-box">${liveText}</div>`;
-                        }
-                        subTextHTML = `<div class="boss-time" style="color: var(--text-muted)">Time: ${timeStr}</div>`;
-                    }
+                        if (diffDownMs <= 0) {
+                            timerBoxHTML = `<div class="timer-box monarch-red">IN WINDOW</div>`;
+                        } else {
+                            const downH = Math.floor(diffDownMs / 3600000);
+                            const downM = Math.floor((diffDownMs % 3600000) / 60000).toString().padStart(2, '0');
+                            const downS = Math.floor((diffDownMs % 60000) / 1000).toString().padStart(2, '0');
+                            
+                            timerBoxHTML = `
+                                <div class="timer-box">
+                                    <div style="font-size: 0.75rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px;">Estimated Spawn in</div>
+                                    <div>${downH > 0 ? downH + 'h ' : ''}${downM}m ${downS}s</div>
+                                </div>`;
+                        }
+                    } else {
+                        const end = target + 300000;
+                        if (now > end) {
+                            cardClasses += ' expired';
+                            timerBoxHTML = `<div class="timer-box" style="display:none;"></div>`;
+                        } else if (now >= target) {
+                            cardClasses += ' spawned';
+                            const d = end - now;
+                            timerBoxHTML = `<div class="timer-box spawn-text">Spawn in ${Math.floor(d/60000)}m ${Math.floor((d%60000)/1000).toString().padStart(2,'0')}s</div>`;
+                        } else {
+                            cardClasses += ' active';
+                            if (!foundNext) { cardClasses += ' next-up'; foundNext = true; }
+                            
+                            let liveText = "";
+                            if (timersOn) {
+                                const d = target - now;
+                                const h = Math.floor(d/3600000);
+                                const m = Math.floor((d%3600000)/60000).toString().padStart(2,'0');
+                                const s = Math.floor((d%60000)/1000).toString().padStart(2,'0');
+                                liveText = `${h > 0 ? h + 'h ' : ''}${m}m ${s}s`;
+                            } else {
+                                liveText = `Announcement at ${timeStr}`;
+                            }
+                            timerBoxHTML = `<div class="timer-box">${liveText}</div>`;
+                        }
+                        subTextHTML = `<div class="boss-time" style="color: var(--text-muted)">Time: ${timeStr}</div>`;
+                    }
 
-                    listDiv.innerHTML += `
-                        <div class="${cardClasses}">
-                            <div class="card-header">
-                                <div class="boss-name">${boss.name}</div>
-                                ${subTextHTML}
-                            </div>
-                            ${timerBoxHTML}
-                        </div>
-                    `;
-                });
-                grid.appendChild(colDiv);
-            });
-        }
+                    listDiv.innerHTML += `
+                        <div class="${cardClasses}">
+                            <div class="card-header">
+                                <div class="boss-name">${boss.name}</div>
+                                ${subTextHTML}
+                            </div>
+                            ${timerBoxHTML}
+                        </div>
+                    `;
+                });
+                grid.appendChild(colDiv);
+            });
+        }
 
-        window.onload = () => {
-            updateClock(); setInterval(updateClock, 1000);
-            loadSheetData(); setInterval(loadSheetData, 600000);
-            setInterval(renderDashboard, 1000);
-        };
-    </script>
+        window.onload = () => {
+            updateClock(); setInterval(updateClock, 1000);
+            loadSheetData(); setInterval(loadSheetData, 600000);
+            setInterval(renderDashboard, 1000);
+        };
+    </script>
 </body>
 </html>
