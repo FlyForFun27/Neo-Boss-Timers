@@ -198,7 +198,7 @@
             background-color: rgba(255,255,255,0.015);
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            margin-bottom: 15px; /* Added slight margin */
+            margin-top: 15px;
         }
         .custom-dropdown summary {
             padding: 12px 15px;
@@ -292,9 +292,8 @@
             document.getElementById('live-clock').textContent = `${h}:${m} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
         }
 
-        // Extremely safe time parser
         function parseTimeToToday(timeStr) {
-            if (!timeStr || String(timeStr).includes('#VALUE!')) return new Date(NaN); // Returns an explicitly "Invalid" Date
+            if (!timeStr) return new Date(NaN);
             const target = new Date();
             const parts = String(timeStr).trim().split(':');
             if (parts.length < 2) return new Date(NaN);
@@ -315,46 +314,58 @@
                 const rows = data.split('\n').slice(1);
                 const today = daysOfWeek[new Date().getDay()].toLowerCase();
 
-                globalBossData = rows.map(row => {
-                    if (!row || typeof row !== 'string') return null;
-                    
-                    let cols = row.split(',').map(c => String(c).trim());
-                    
-                    // Clean up Google Sheet CSV quirks
-                    if (cols.length > 0 && cols === '') cols.shift();
-                    if (cols.length < 2) return null;
+                const newBossData = [];
 
-                    let region = cols || 'Unknown';
-                    let name = cols || 'Unknown';
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (!row || typeof row !== 'string') continue;
+
+                    // Super safe parsing: split by comma, ensure everything is a string, then trim
+                    const cells = row.split(',').map(cell => String(cell || '').trim());
+
+                    // Fix Google Sheet artifact where first cell is completely blank
+                    if (cells.length > 0 && cells === '') {
+                        cells.shift();
+                    }
+
+                    // Must have at least Region, Name, and Time
+                    if (cells.length < 3) continue;
+
+                    const region = cells;
+                    const name = cells;
                     let day = '';
                     let timeStr = '';
 
-                    if (cols.length === 3) {
-                        timeStr = cols;
-                    } else if (cols.length >= 4) {
-                        day = cols.toLowerCase();
-                        timeStr = cols;
+                    if (cells.length === 3) {
+                        timeStr = cells;
+                    } else if (cells.length >= 4) {
+                        day = cells.toLowerCase();
+                        timeStr = cells;
                     }
 
-                    return {
-                        region: region,
-                        name: name,
-                        day: day,
-                        dateObj: parseTimeToToday(timeStr) // Validates data format immediately
-                    };
-                }).filter(item => {
-                    if (!item) return false;
+                    // Skip broken Google Sheet cells
+                    if (timeStr.includes('#VALUE!')) continue;
+
+                    const dateObj = parseTimeToToday(timeStr);
                     
-                    // NEW: If the date object is invalid (e.g., from #VALUE!), discard the row entirely!
-                    if (isNaN(item.dateObj.getTime())) return false;
-                    
-                    return item.region.toLowerCase() === 'monarch' || item.day === today;
-                });
-                
+                    // Skip if the time isn't a real time (like empty string or random letters)
+                    if (isNaN(dateObj.getTime())) continue;
+
+                    if (region.toLowerCase() === 'monarch' || day === today) {
+                        newBossData.push({
+                            region: region,
+                            name: name,
+                            day: day,
+                            dateObj: dateObj
+                        });
+                    }
+                }
+
+                globalBossData = newBossData;
                 renderDashboard();
             } catch (err) { 
                 document.getElementById('dynamic-grid').innerHTML = `
-                    <div style="color:var(--accent-red); font-size:1rem; padding: 20px;">
+                    <div style="color:var(--accent-red); font-size:1rem; padding: 20px; background: #1a1a1a; border-radius: 8px;">
                         <b>Data Load Error:</b> ${err.message}
                     </div>`;
             }
