@@ -193,12 +193,12 @@
         .timer-box.monarch-red { color: var(--accent-red) !important; }
         .spawn-text { color: var(--accent-red) !important; }
 
-        /* Dropdown Styles */
+        /* Dropdown Styles for other Monarchs */
         .custom-dropdown {
             background-color: rgba(255,255,255,0.015);
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            margin-bottom: 15px;
+            margin-top: 15px;
         }
         .custom-dropdown summary {
             padding: 12px 15px;
@@ -253,7 +253,7 @@
         </div>
     </main>
 
-   <script>
+    <script>
         const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtRlBFHRViiLrjzmlEvxgI8-1UNwfrJWJU7fsej4eO6dLOEEzozvd_03KmgWhAIZonrzb2QupMcvVK/pub?output=csv';
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const themes = ['#9d4edd', '#4cc9f0', '#f72585', '#4ade80', '#fbbf24', '#f87171', '#818cf8', '#d1d1d1'];
@@ -292,36 +292,24 @@
             document.getElementById('live-clock').textContent = `${h}:${m} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
         }
 
-        // Updated Time Parser for HH:MM:SS and AM/PM safety
+        // Extremely forgiving time parser with HH:MM:SS support
         function parseTimeToToday(timeStr) {
-            if (!timeStr) return new Date(NaN);
             const target = new Date();
+            if (!timeStr || String(timeStr).includes('#VALUE!')) return target;
             
-            let cleanStr = String(timeStr).trim();
-            if (cleanStr.includes('#VALUE!')) return new Date(NaN);
-            
-            // Check for AM/PM before we strip letters out
-            const isPM = cleanStr.toLowerCase().includes('pm');
-            const isAM = cleanStr.toLowerCase().includes('am');
-            
-            // Strip out any quotes or letters to isolate the numbers
-            cleanStr = cleanStr.replace(/['"a-zA-Z]/g, '').trim();
-            
+            // Clean out quotes, etc.
+            const cleanStr = String(timeStr).replace(/['"]/g, '').trim();
             const parts = cleanStr.split(':');
-            if (parts.length < 2) return new Date(NaN);
             
-            let hrs = parseInt(parts);
+            if (parts.length < 2) return target; // Fallback to current time safely
+            
+            const hrs = parseInt(parts);
             const mins = parseInt(parts);
-            // Capture seconds if they exist in HH:MM:SS, otherwise default to 0
             const secs = parts.length > 2 ? parseInt(parts) : 0;
             
-            if (isNaN(hrs) || isNaN(mins)) return new Date(NaN);
-            
-            // Adjust for 12-hour clock if AM/PM was present
-            if (isPM && hrs < 12) hrs += 12;
-            if (isAM && hrs === 12) hrs = 0;
-            
-            target.setHours(hrs, mins, isNaN(secs) ? 0 : secs, 0);
+            if (!isNaN(hrs) && !isNaN(mins)) {
+                target.setHours(hrs, mins, isNaN(secs) ? 0 : secs, 0);
+            }
             return target;
         }
 
@@ -332,56 +320,42 @@
                 const rows = data.split('\n').slice(1);
                 const today = daysOfWeek[new Date().getDay()].toLowerCase();
 
-                const newBossData = [];
+                globalBossData = rows.map(row => {
+                    if (!row) return null;
+                    
+                    let cols = row.split(',');
+                    // Safely ignore Google Sheets leading empty columns without throwing a trim error
+                    if (cols.length > 0 && String(cols).trim() === '') cols.shift();
+                    
+                    if (cols.length < 3) return null; 
 
-                for (let i = 0; i < rows.length; i++) {
-                    const row = rows[i];
-                    if (!row || typeof row !== 'string') continue;
-
-                    // Split and force EVERY cell to be a String
-                    const cells = row.split(',').map(cell => String(cell || '').trim());
-
-                    if (cells.length > 0 && cells === '') {
-                        cells.shift();
-                    }
-
-                    if (cells.length < 3) continue;
-
-                    const region = String(cells || '');
-                    const name = String(cells || '');
+                    let region = String(cols).trim();
+                    let name = String(cols).trim();
                     let day = '';
                     let timeStr = '';
 
-                    if (cells.length === 3) {
-                        timeStr = String(cells || '');
-                    } else if (cells.length >= 4) {
-                        day = String(cells || '').toLowerCase();
-                        timeStr = String(cells || '');
+                    // Handle Monarchs that might only have 3 columns vs regular bosses with 4
+                    if (cols.length === 3) {
+                        timeStr = String(cols).trim();
+                    } else {
+                        day = String(cols).trim().toLowerCase();
+                        timeStr = String(cols).trim();
                     }
 
-                    if (timeStr.includes('#VALUE!')) continue;
-
-                    const dateObj = parseTimeToToday(timeStr);
-                    
-                    if (isNaN(dateObj.getTime())) continue;
-
-                    if (String(region).toLowerCase() === 'monarch' || day === today) {
-                        newBossData.push({
-                            region: region,
-                            name: name,
-                            day: day,
-                            dateObj: dateObj
-                        });
-                    }
-                }
-
-                globalBossData = newBossData;
+                    return {
+                        region: region,
+                        name: name,
+                        day: day,
+                        dateObj: parseTimeToToday(timeStr)
+                    };
+                }).filter(item => {
+                    if (!item) return false;
+                    return item.region.toLowerCase() === 'monarch' || item.day === today;
+                });
+                
                 renderDashboard();
             } catch (err) { 
-                document.getElementById('dynamic-grid').innerHTML = `
-                    <div style="color:var(--accent-red); font-size:1rem; padding: 20px; background: #1a1a1a; border-radius: 8px;">
-                        <b>Data Load Error:</b> ${err.message}
-                    </div>`;
+                console.error("Data Load Error:", err); 
             }
         }
 
@@ -390,11 +364,6 @@
                 const now = new Date().getTime();
                 const grid = document.getElementById('dynamic-grid');
                 grid.innerHTML = '';
-
-                if (globalBossData.length === 0) {
-                    grid.innerHTML = `<div style="color: var(--text-muted); margin-top: 50px;">No bosses found for today. Check your Google Sheet!</div>`;
-                    return;
-                }
 
                 const uniqueRegions = [...new Set(globalBossData.map(b => b.region))];
 
@@ -421,7 +390,7 @@
 
                     filtered.forEach(boss => {
                         const target = boss.dateObj.getTime();
-                        // Format the visible time to match your sheet (shows HH:MM:SS)
+                        // Format the visible time to match your sheet (shows HH:MM:SS if seconds exist)
                         const timeStr = boss.dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
                         
                         let cardClasses = 'card';
@@ -503,7 +472,7 @@
                             <details class="custom-dropdown">
                                 <summary>Other Monarchs Test</summary>
                                 <div class="dropdown-content">
-                                    Success! The layout is officially stable.
+                                    If you can see this text, the dropdown HTML is perfectly stable!
                                 </div>
                             </details>
                         `;
@@ -512,10 +481,7 @@
                     grid.appendChild(colDiv);
                 });
             } catch (err) {
-                document.getElementById('dynamic-grid').innerHTML = `
-                    <div style="color:var(--accent-red); font-size:1rem; padding: 20px; background: #1a1a1a; border-radius: 8px;">
-                        <b>Render Error:</b><br>${err.message}
-                    </div>`;
+                console.error("Render Error:", err);
             }
         }
 
