@@ -192,42 +192,6 @@
 
         .timer-box.monarch-red { color: var(--accent-red) !important; }
         .spawn-text { color: var(--accent-red) !important; }
-
-        /* --- Dropdown Styles --- */
-        .custom-dropdown {
-            background-color: rgba(255,255,255,0.015);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            margin-top: 15px;
-        }
-        .custom-dropdown summary {
-            padding: 12px 15px;
-            font-weight: 600;
-            cursor: pointer;
-            color: var(--text-muted);
-            list-style: none;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
-        }
-        .custom-dropdown summary::-webkit-details-marker { display: none; }
-        .custom-dropdown summary::after {
-            content: '▼';
-            font-size: 0.8rem;
-            transition: transform 0.3s;
-        }
-        .custom-dropdown[open] summary::after { transform: rotate(180deg); }
-        
-        .custom-dropdown .dropdown-content {
-            padding: 15px;
-            border-top: 1px solid var(--border-color);
-        }
-        .custom-dropdown .dropdown-content .card:last-child {
-            margin-bottom: 0;
-        }
     </style>
 </head>
 <body>
@@ -254,7 +218,7 @@
     </main>
 
     <script>
-        const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtRlBFHRViiLrjzmlEvxgI8-1UNwfrJWJU7fsej4eO6dLOEEzozvd_03KmgWhAIZonrzb2QupMcvVK/pub?gid=0&single=true&output=csv';
+        const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtRlBFHRViiLrjzmlEvxgI8-1UNwfrJWJU7fsej4eO6dLOEEzozvd_03KmgWhAIZonrzb2QupMcvVK/pub?output=csv';
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const themes = ['#9d4edd', '#4cc9f0', '#f72585', '#4ade80', '#fbbf24', '#f87171', '#818cf8', '#d1d1d1'];
         
@@ -296,7 +260,7 @@
             const target = new Date();
             const parts = timeStr.trim().split(':');
             if (parts.length < 2) return target;
-            target.setHours(parseInt(parts), parseInt(parts), 0, 0);
+            target.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
             return target;
         }
 
@@ -309,26 +273,21 @@
 
                 globalBossData = rows.map(row => {
                     let cols = row.split(',');
-                    if (cols.trim() === '') cols.shift();
+                    if (cols[0].trim() === '') cols.shift();
                     if (cols.length < 4) return null;
                     return {
-                        region: cols.trim(),
-                        name: cols.trim(),
-                        day: cols.trim().toLowerCase(),
-                        dateObj: parseTimeToToday(cols.trim())
+                        region: cols[0].trim(),
+                        name: cols[1].trim(),
+                        day: cols[2].trim().toLowerCase(),
+                        dateObj: parseTimeToToday(cols[3].trim())
                     };
-                }).filter(item => {
-                    if (!item) return false;
-                    // Let all Monarchs through, filter regular bosses by today
-                    return item.region.toLowerCase() === 'monarch' || item.day === today;
-                });
+                }).filter(item => item && item.day === today); // <-- STRICTLY "TODAY" FOR EVERYTHING NOW
                 renderDashboard();
             } catch (err) { console.error(err); }
         }
 
         function renderDashboard() {
             const now = new Date().getTime();
-            const todayStr = daysOfWeek[new Date().getDay()].toLowerCase();
             const grid = document.getElementById('dynamic-grid');
             grid.innerHTML = '';
 
@@ -338,6 +297,16 @@
                 const isMonarch = regionName.toLowerCase() === 'monarch';
                 const filtered = globalBossData.filter(b => b.region === regionName);
                 
+                filtered.sort((a, b) => {
+                    if (isMonarch) return a.dateObj - b.dateObj;
+                    const aEnd = a.dateObj.getTime() + 300000;
+                    const bEnd = b.dateObj.getTime() + 300000;
+                    const aExpired = now > aEnd;
+                    const bExpired = now > bEnd;
+                    if (aExpired !== bExpired) return aExpired ? 1 : -1;
+                    return a.dateObj - b.dateObj;
+                });
+
                 const colDiv = document.createElement('div');
                 colDiv.className = 'column';
                 colDiv.innerHTML = `<div class="column-title">${regionName}</div><div class="boss-list"></div>`;
@@ -345,8 +314,7 @@
 
                 let foundNext = false;
 
-                // Reusable card builder function
-                const createCard = (boss) => {
+                filtered.forEach(boss => {
                     const target = boss.dateObj.getTime();
                     const timeStr = boss.dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                     
@@ -412,59 +380,16 @@
                         subTextHTML = `<div class="boss-time" style="color: var(--text-muted)">Time: ${timeStr}</div>`;
                     }
 
-                    // Add Day Badge for Monarchs that aren't today
-                    let dayBadge = '';
-                    if (boss.day !== todayStr && isMonarch) {
-                        dayBadge = `<span style="color: var(--text-muted); font-size: 0.75rem; font-weight: normal; margin-left: 5px; text-transform: capitalize;">(${boss.day})</span>`;
-                    }
-
-                    return `
+                    listDiv.innerHTML += `
                         <div class="${cardClasses}">
                             <div class="card-header">
-                                <div class="boss-name">${boss.name}${dayBadge}</div>
+                                <div class="boss-name">${boss.name}</div>
                                 ${subTextHTML}
                             </div>
                             ${timerBoxHTML}
                         </div>
                     `;
-                };
-
-                // Split Monarchs into "Today" vs "Other Days"
-                if (isMonarch) {
-                    const todayBosses = filtered.filter(b => b.day === todayStr);
-                    const otherBosses = filtered.filter(b => b.day !== todayStr);
-
-                    todayBosses.sort((a, b) => a.dateObj - b.dateObj);
-                    otherBosses.sort((a, b) => a.dateObj - b.dateObj);
-
-                    todayBosses.forEach(boss => { listDiv.innerHTML += createCard(boss); });
-
-                    if (otherBosses.length > 0) {
-                        let otherCards = '';
-                        otherBosses.forEach(boss => { otherCards += createCard(boss); });
-                        listDiv.innerHTML += `
-                            <details class="custom-dropdown">
-                                <summary>Other Monarchs (${otherBosses.length})</summary>
-                                <div class="dropdown-content">
-                                    ${otherCards}
-                                </div>
-                            </details>
-                        `;
-                    }
-                } else {
-                    // Regular Boss Sort
-                    filtered.sort((a, b) => {
-                        const aEnd = a.dateObj.getTime() + 300000;
-                        const bEnd = b.dateObj.getTime() + 300000;
-                        const aExpired = now > aEnd;
-                        const bExpired = now > bEnd;
-                        if (aExpired !== bExpired) return aExpired ? 1 : -1;
-                        return a.dateObj - b.dateObj;
-                    });
-                    
-                    filtered.forEach(boss => { listDiv.innerHTML += createCard(boss); });
-                }
-
+                });
                 grid.appendChild(colDiv);
             });
         }
@@ -477,3 +402,4 @@
     </script>
 </body>
 </html>
+
