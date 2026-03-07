@@ -5,23 +5,33 @@ window.globalCsvData = null;
 window.currentDayOffset = null;
 window.notifiedBosses = new Set(); 
 
-// The Ping Sound 
-const alertAudio = new Audio('SoundAlert.mp3');
+// Using your local custom sound file
+const alertAudio = new Audio('SoundAlert.mp3'); 
 
 document.addEventListener("DOMContentLoaded", () => {
     // 1. Load Theme
     const savedColor = localStorage.getItem('neoTimerThemeColor');
     if (savedColor) document.documentElement.style.setProperty('--accent-color', savedColor);
 
-    // 2. Load Volume
+    // 2. Load Volume (Defaults to 20%)
     const savedVolume = localStorage.getItem('neoTimerVolume');
     if (savedVolume !== null) {
         alertAudio.volume = parseFloat(savedVolume);
     } else {
-        alertAudio.volume = 0.2;
+        alertAudio.volume = 0.2; 
     }
 
-    // 3. Load Timer Toggle
+    // 3. Load Toggles (Overlay, Sound, Timer)
+    const overlayToggle = document.getElementById('overlay-toggle');
+    const savedOverlay = localStorage.getItem('neoTimerOverlayState');
+    if (overlayToggle) {
+        if (savedOverlay !== null) overlayToggle.checked = savedOverlay === 'true';
+        overlayToggle.addEventListener('change', (e) => {
+            localStorage.setItem('neoTimerOverlayState', e.target.checked);
+            tick(); 
+        });
+    }
+
     const timerToggle = document.getElementById('timer-toggle');
     const savedToggle = localStorage.getItem('neoTimerToggleState');
     if (timerToggle) {
@@ -32,7 +42,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // 4. Load Sound Toggle
     const soundToggle = document.getElementById('sound-toggle');
     const savedSound = localStorage.getItem('neoTimerSoundState');
     if (soundToggle) {
@@ -40,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
         soundToggle.addEventListener('change', (e) => localStorage.setItem('neoTimerSoundState', e.target.checked));
     }
 
-    // 5. Color Picker
+    // 4. Color Picker
     document.querySelectorAll('.color-dot').forEach(dot => {
         dot.addEventListener('click', (e) => {
             const selectedColor = e.target.getAttribute('data-color');
@@ -49,7 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // 6. Setup Settings Modal & Volume Slider
+    // 5. Setup Settings Modal & Volume Controls
     const modal = document.getElementById('settings-modal');
     const cog = document.getElementById('settings-btn');
     const closeBtn = document.querySelector('.close-modal');
@@ -72,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (testBtn) {
         testBtn.addEventListener('click', () => {
-            alertAudio.currentTime = 0; // Reset to start if already playing
+            alertAudio.currentTime = 0; 
             alertAudio.play().catch(e => console.log("Audio play blocked", e));
         });
     }
@@ -87,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (e.target === modal) modal.style.display = 'none';
     });
 
-    // Fetch Data
+    // Fetch CSV Data
     Papa.parse(sheetUrl, {
         download: true,
         header: true,
@@ -101,35 +110,46 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// --- SETTINGS POPULATOR (REGIONS) ---
+// --- SETTINGS POPULATOR (VISIBILITY & SOUND) ---
 function populateSettings() {
     const list = document.getElementById('region-alert-list');
     if (!window.globalCsvData) return;
     
     const regionNames = [...new Set(window.globalCsvData.map(b => b.Region))].filter(Boolean).sort();
     let mutedRegions = JSON.parse(localStorage.getItem('neoTimerMutedRegions')) || [];
+    let hiddenRegions = JSON.parse(localStorage.getItem('neoTimerHiddenRegions')) || [];
 
     list.innerHTML = regionNames.map(name => `
         <div class="boss-alert-item">
             <span class="boss-alert-name">${name}</span>
-            <label class="switch">
-                <input type="checkbox" data-region="${name}" ${mutedRegions.includes(name) ? '' : 'checked'} class="region-mute-toggle">
-                <span class="slider round"></span>
-            </label>
+            <div class="settings-toggles">
+                <label class="switch" title="Toggle Overlay Visibility">
+                    <input type="checkbox" data-region="${name}" data-type="visible" ${hiddenRegions.includes(name) ? '' : 'checked'} class="region-setting-toggle">
+                    <span class="slider round"></span>
+                </label>
+                <label class="switch" title="Toggle Sound">
+                    <input type="checkbox" data-region="${name}" data-type="sound" ${mutedRegions.includes(name) ? '' : 'checked'} class="region-setting-toggle">
+                    <span class="slider round"></span>
+                </label>
+            </div>
         </div>
     `).join('');
 
-    document.querySelectorAll('.region-mute-toggle').forEach(toggle => {
+    document.querySelectorAll('.region-setting-toggle').forEach(toggle => {
         toggle.addEventListener('change', (e) => {
             const rName = e.target.dataset.region;
-            let currentMuted = JSON.parse(localStorage.getItem('neoTimerMutedRegions')) || [];
+            const type = e.target.dataset.type;
+            const storageKey = type === 'sound' ? 'neoTimerMutedRegions' : 'neoTimerHiddenRegions';
+            
+            let currentList = JSON.parse(localStorage.getItem(storageKey)) || [];
             
             if (e.target.checked) {
-                currentMuted = currentMuted.filter(n => n !== rName);
+                currentList = currentList.filter(n => n !== rName);
             } else {
-                if (!currentMuted.includes(rName)) currentMuted.push(rName);
+                if (!currentList.includes(rName)) currentList.push(rName);
             }
-            localStorage.setItem('neoTimerMutedRegions', JSON.stringify(currentMuted));
+            localStorage.setItem(storageKey, JSON.stringify(currentList));
+            if (type === 'visible') tick(); 
         });
     });
 }
@@ -259,14 +279,22 @@ function buildDashboard(data, offset) {
     });
 }
 
-// --- TIMER MATH & ALERTS ---
+// --- TIMER MATH, ALERTS & OVERLAY ---
 function updateTimers(nowSec, activeOffset) {
     const timerToggle = document.getElementById('timer-toggle');
     const isTimerOn = timerToggle ? timerToggle.checked : true;
     
     const soundToggle = document.getElementById('sound-toggle');
     const isGlobalSoundOn = soundToggle ? soundToggle.checked : false;
+    
+    const overlayToggle = document.getElementById('overlay-toggle');
+    const isOverlayMode = overlayToggle ? overlayToggle.checked : false;
+
     const mutedRegions = JSON.parse(localStorage.getItem('neoTimerMutedRegions')) || [];
+    const hiddenRegions = JSON.parse(localStorage.getItem('neoTimerHiddenRegions')) || [];
+
+    let nextUpcomingBoss = null;
+    let shortestTimeRemaining = Infinity;
 
     document.querySelectorAll('.boss-card').forEach(card => {
         const isMonarch = card.classList.contains('monarch-card');
@@ -276,7 +304,7 @@ function updateTimers(nowSec, activeOffset) {
         const regionName = card.dataset.region; 
         
         const spawnId = `${bName}_${targetSec}_${activeOffset}`;
-        let timeRemaining; // Added to track when to play the sound
+        let timeRemaining; 
 
         card.classList.remove('dimmed');
         countdownEl.classList.remove('spawning');
@@ -285,14 +313,11 @@ function updateTimers(nowSec, activeOffset) {
             const killTimerEl = card.querySelector('.kill-timer');
             let timeSinceKill = nowSec - targetSec;
             if (timeSinceKill < 0) timeSinceKill += 86400; 
-            
             if (killTimerEl) killTimerEl.innerText = formatDuration(timeSinceKill * 1000);
             
-            const spawnIn = 9000 - timeSinceKill; 
-            timeRemaining = spawnIn; // Store for audio check
-            
-            if (spawnIn > 0) {
-                countdownEl.innerText = formatDuration(spawnIn * 1000);
+            timeRemaining = 9000 - timeSinceKill; 
+            if (timeRemaining > 0) {
+                countdownEl.innerText = formatDuration(timeRemaining * 1000);
                 card.dataset.priority = "1";
             } else {
                 countdownEl.innerText = `In Window`;
@@ -300,14 +325,12 @@ function updateTimers(nowSec, activeOffset) {
                 card.dataset.priority = "0";
             }
         } else {
-            const diffSec = (targetSec + (86400 * activeOffset)) - nowSec;
-            timeRemaining = diffSec; // Store for audio check
-
-            if (diffSec > 0) {
-                countdownEl.innerText = isTimerOn ? formatDuration(diffSec * 1000) : `Announcement at: ${card.dataset.targetTime}`;
+            timeRemaining = (targetSec + (86400 * activeOffset)) - nowSec;
+            if (timeRemaining > 0) {
+                countdownEl.innerText = isTimerOn ? formatDuration(timeRemaining * 1000) : `At: ${card.dataset.targetTime}`;
                 card.dataset.priority = "1";
-            } else if (diffSec <= 0 && diffSec > -300) { 
-                countdownEl.innerText = `Spawning in: ${formatDuration((300 + diffSec) * 1000)}`;
+            } else if (timeRemaining <= 0 && timeRemaining > -300) { 
+                countdownEl.innerText = `Spawning in: ${formatDuration((300 + timeRemaining) * 1000)}`;
                 countdownEl.classList.add('spawning');
                 card.dataset.priority = "0";
             } else {
@@ -317,27 +340,62 @@ function updateTimers(nowSec, activeOffset) {
             }
         }
 
-        // --- NEW: INDEPENDENT AUDIO TRIGGER ---
-        // Play sound if 5 minutes (300s) or less remain
+        // Overlay Logic
+        if (!hiddenRegions.includes(regionName) && timeRemaining > -300 && timeRemaining < shortestTimeRemaining) {
+            shortestTimeRemaining = timeRemaining;
+            nextUpcomingBoss = {
+                name: bName,
+                region: regionName,
+                text: countdownEl.innerText,
+                isSpawning: timeRemaining <= 0
+            };
+        }
+
+        // Audio Logic: Play sound exactly 5 minutes (300s) before spawn
         if (timeRemaining <= 300 && timeRemaining > -300) {
             if (isGlobalSoundOn && !mutedRegions.includes(regionName) && !window.notifiedBosses.has(spawnId)) {
                 alertAudio.play().catch(e => console.log("Audio play blocked by browser."));
-                window.notifiedBosses.add(spawnId); // Mark as notified
+                window.notifiedBosses.add(spawnId); 
             }
         } else if (timeRemaining > 300) {
-            // Reset the notification tracker ONLY if the timer is safely above 5 minutes
             window.notifiedBosses.delete(spawnId);
         }
     });
 
-    document.querySelectorAll('.card-container').forEach(container => {
-        const cards = Array.from(container.children);
-        cards.sort((a, b) => {
-            if (a.dataset.priority !== b.dataset.priority) return a.dataset.priority - b.dataset.priority;
-            return parseInt(a.dataset.targetSec) - parseInt(b.dataset.targetSec);
+    // Handle UI Switching (Grid vs Overlay)
+    const grid = document.getElementById('timers-grid');
+    const overlay = document.getElementById('overlay-container');
+
+    if (isOverlayMode) {
+        grid.style.display = 'none';
+        overlay.style.display = 'flex';
+        
+        if (nextUpcomingBoss) {
+            document.getElementById('overlay-region').innerText = `Next Up: ${nextUpcomingBoss.region}`;
+            document.getElementById('overlay-boss').innerText = nextUpcomingBoss.name;
+            const overlayTimer = document.getElementById('overlay-countdown');
+            overlayTimer.innerText = nextUpcomingBoss.text;
+            
+            if (nextUpcomingBoss.isSpawning) overlayTimer.classList.add('spawning');
+            else overlayTimer.classList.remove('spawning');
+        } else {
+            document.getElementById('overlay-region').innerText = `--`;
+            document.getElementById('overlay-boss').innerText = "All Clear";
+            document.getElementById('overlay-countdown').innerText = "00:00:00";
+        }
+    } else {
+        grid.style.display = 'flex';
+        overlay.style.display = 'none';
+        
+        document.querySelectorAll('.card-container').forEach(container => {
+            const cards = Array.from(container.children);
+            cards.sort((a, b) => {
+                if (a.dataset.priority !== b.dataset.priority) return a.dataset.priority - b.dataset.priority;
+                return parseInt(a.dataset.targetSec) - parseInt(b.dataset.targetSec);
+            });
+            cards.forEach(card => container.appendChild(card));
         });
-        cards.forEach(card => container.appendChild(card));
-    });
+    }
 }
 
 function formatDuration(ms) {
