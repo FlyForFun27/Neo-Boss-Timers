@@ -5,33 +5,23 @@ window.globalCsvData = null;
 window.currentDayOffset = null;
 window.notifiedBosses = new Set(); 
 
-// Using your local custom sound file
-const alertAudio = new Audio('SoundAlert.mp3'); 
+// The Ping Sound 
+const alertAudio = new Audio('SoundAlert.mp3');
 
 document.addEventListener("DOMContentLoaded", () => {
     // 1. Load Theme
     const savedColor = localStorage.getItem('neoTimerThemeColor');
     if (savedColor) document.documentElement.style.setProperty('--accent-color', savedColor);
 
-    // 2. Load Volume (Defaults to 20%)
+    // 2. Load Volume
     const savedVolume = localStorage.getItem('neoTimerVolume');
     if (savedVolume !== null) {
         alertAudio.volume = parseFloat(savedVolume);
     } else {
-        alertAudio.volume = 0.2; 
+        alertAudio.volume = 0.2;
     }
 
-    // 3. Load Toggles (Overlay, Sound, Timer)
-    const overlayToggle = document.getElementById('overlay-toggle');
-    const savedOverlay = localStorage.getItem('neoTimerOverlayState');
-    if (overlayToggle) {
-        if (savedOverlay !== null) overlayToggle.checked = savedOverlay === 'true';
-        overlayToggle.addEventListener('change', (e) => {
-            localStorage.setItem('neoTimerOverlayState', e.target.checked);
-            tick(); 
-        });
-    }
-
+    // 3. Load Timer Toggle
     const timerToggle = document.getElementById('timer-toggle');
     const savedToggle = localStorage.getItem('neoTimerToggleState');
     if (timerToggle) {
@@ -42,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // 4. Load Sound Toggle
     const soundToggle = document.getElementById('sound-toggle');
     const savedSound = localStorage.getItem('neoTimerSoundState');
     if (soundToggle) {
@@ -49,7 +40,21 @@ document.addEventListener("DOMContentLoaded", () => {
         soundToggle.addEventListener('change', (e) => localStorage.setItem('neoTimerSoundState', e.target.checked));
     }
 
-    // 4. Color Picker
+    // 5. Load Summer Time (DST) Toggle
+    const dstToggle = document.getElementById('dst-toggle');
+    const savedDst = localStorage.getItem('neoTimerDST');
+    if (dstToggle) {
+        if (savedDst !== null) dstToggle.checked = savedDst === 'true';
+        dstToggle.addEventListener('change', (e) => {
+            localStorage.setItem('neoTimerDST', e.target.checked);
+            if (window.globalCsvData) {
+                window.currentDayOffset = null; // Force UI rebuild
+                tick(); 
+            }
+        });
+    }
+
+    // 6. Color Picker
     document.querySelectorAll('.color-dot').forEach(dot => {
         dot.addEventListener('click', (e) => {
             const selectedColor = e.target.getAttribute('data-color');
@@ -58,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // 5. Setup Settings Modal & Volume Controls
+    // 7. Setup Settings Modal & Volume Slider
     const modal = document.getElementById('settings-modal');
     const cog = document.getElementById('settings-btn');
     const closeBtn = document.querySelector('.close-modal');
@@ -81,7 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (testBtn) {
         testBtn.addEventListener('click', () => {
-            alertAudio.currentTime = 0; 
+            alertAudio.currentTime = 0; // Reset to start if already playing
             alertAudio.play().catch(e => console.log("Audio play blocked", e));
         });
     }
@@ -96,7 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (e.target === modal) modal.style.display = 'none';
     });
 
-    // Fetch CSV Data
+    // Fetch Data
     Papa.parse(sheetUrl, {
         download: true,
         header: true,
@@ -110,46 +115,35 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// --- SETTINGS POPULATOR (VISIBILITY & SOUND) ---
+// --- SETTINGS POPULATOR (REGIONS) ---
 function populateSettings() {
     const list = document.getElementById('region-alert-list');
     if (!window.globalCsvData) return;
     
     const regionNames = [...new Set(window.globalCsvData.map(b => b.Region))].filter(Boolean).sort();
     let mutedRegions = JSON.parse(localStorage.getItem('neoTimerMutedRegions')) || [];
-    let hiddenRegions = JSON.parse(localStorage.getItem('neoTimerHiddenRegions')) || [];
 
     list.innerHTML = regionNames.map(name => `
         <div class="boss-alert-item">
             <span class="boss-alert-name">${name}</span>
-            <div class="settings-toggles">
-                <label class="switch" title="Toggle Overlay Visibility">
-                    <input type="checkbox" data-region="${name}" data-type="visible" ${hiddenRegions.includes(name) ? '' : 'checked'} class="region-setting-toggle">
-                    <span class="slider round"></span>
-                </label>
-                <label class="switch" title="Toggle Sound">
-                    <input type="checkbox" data-region="${name}" data-type="sound" ${mutedRegions.includes(name) ? '' : 'checked'} class="region-setting-toggle">
-                    <span class="slider round"></span>
-                </label>
-            </div>
+            <label class="switch">
+                <input type="checkbox" data-region="${name}" ${mutedRegions.includes(name) ? '' : 'checked'} class="region-mute-toggle">
+                <span class="slider round"></span>
+            </label>
         </div>
     `).join('');
 
-    document.querySelectorAll('.region-setting-toggle').forEach(toggle => {
+    document.querySelectorAll('.region-mute-toggle').forEach(toggle => {
         toggle.addEventListener('change', (e) => {
             const rName = e.target.dataset.region;
-            const type = e.target.dataset.type;
-            const storageKey = type === 'sound' ? 'neoTimerMutedRegions' : 'neoTimerHiddenRegions';
-            
-            let currentList = JSON.parse(localStorage.getItem(storageKey)) || [];
+            let currentMuted = JSON.parse(localStorage.getItem('neoTimerMutedRegions')) || [];
             
             if (e.target.checked) {
-                currentList = currentList.filter(n => n !== rName);
+                currentMuted = currentMuted.filter(n => n !== rName);
             } else {
-                if (!currentList.includes(rName)) currentList.push(rName);
+                if (!currentMuted.includes(rName)) currentMuted.push(rName);
             }
-            localStorage.setItem(storageKey, JSON.stringify(currentList));
-            if (type === 'visible') tick(); 
+            localStorage.setItem('neoTimerMutedRegions', JSON.stringify(currentMuted));
         });
     });
 }
@@ -158,21 +152,28 @@ function populateSettings() {
 function tick() {
     if (!window.globalCsvData) return;
     const now = new Date();
+    
+    // Adjust for Summer Time
+    const savedDst = localStorage.getItem('neoTimerDST');
+    if (savedDst === 'true') {
+        now.setHours(now.getHours() - 1);
+    }
+
     const nowSec = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
 
-    const activeOffset = getActiveDayOffset(window.globalCsvData, nowSec);
+    const activeOffset = getActiveDayOffset(window.globalCsvData, nowSec, now);
 
     if (window.currentDayOffset !== activeOffset) {
         window.currentDayOffset = activeOffset;
-        buildDashboard(window.globalCsvData, activeOffset);
+        buildDashboard(window.globalCsvData, activeOffset, now);
     }
 
     updateTopClock(now, nowSec);
     updateTimers(nowSec, activeOffset);
 }
 
-function getActiveDayOffset(data, nowSec) {
-    const todayStr = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date());
+function getActiveDayOffset(data, nowSec, now) {
+    const todayStr = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now);
     const todaysStandardBosses = data.filter(row => row.Weekday === todayStr && row.Region && row.Region.toLowerCase() !== 'monarch');
     const hasActiveBosses = todaysStandardBosses.some(boss => (boss.TargetSec + 300) > nowSec);
     return hasActiveBosses ? 0 : 1; 
@@ -199,15 +200,15 @@ function updateTopClock(now, nowSec) {
 }
 
 // --- UI BUILDER ---
-function buildDashboard(data, offset) {
+function buildDashboard(data, offset, now) {
     const grid = document.getElementById('timers-grid');
     grid.innerHTML = ''; 
     
-    const targetDate = new Date();
+    const targetDate = new Date(now);
     targetDate.setDate(targetDate.getDate() + offset);
     const displayDayStr = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(targetDate);
     const isTomorrow = offset > 0;
-    const trueTodayStr = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(new Date());
+    const trueTodayStr = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now);
 
     const displayStandardBosses = data.filter(row => row.Weekday === displayDayStr && row.Region && row.Region.toLowerCase() !== 'monarch');
     const trueTodayMonarchs = data.filter(row => row.Weekday === trueTodayStr && row.Region && row.Region.toLowerCase() === 'monarch');
@@ -279,22 +280,14 @@ function buildDashboard(data, offset) {
     });
 }
 
-// --- TIMER MATH, ALERTS & OVERLAY ---
+// --- TIMER MATH & ALERTS ---
 function updateTimers(nowSec, activeOffset) {
     const timerToggle = document.getElementById('timer-toggle');
     const isTimerOn = timerToggle ? timerToggle.checked : true;
     
     const soundToggle = document.getElementById('sound-toggle');
     const isGlobalSoundOn = soundToggle ? soundToggle.checked : false;
-    
-    const overlayToggle = document.getElementById('overlay-toggle');
-    const isOverlayMode = overlayToggle ? overlayToggle.checked : false;
-
     const mutedRegions = JSON.parse(localStorage.getItem('neoTimerMutedRegions')) || [];
-    const hiddenRegions = JSON.parse(localStorage.getItem('neoTimerHiddenRegions')) || [];
-
-    // Dictionary to hold the closest boss for EACH region
-    let nextBossesPerRegion = {};
 
     document.querySelectorAll('.boss-card').forEach(card => {
         const isMonarch = card.classList.contains('monarch-card');
@@ -309,29 +302,44 @@ function updateTimers(nowSec, activeOffset) {
         card.classList.remove('dimmed');
         countdownEl.classList.remove('spawning');
 
-        // Math Logic
+        // --- NEW MONARCH MATH LOGIC ---
         if (isMonarch) {
             const killTimerEl = card.querySelector('.kill-timer');
             let timeSinceKill = nowSec - targetSec;
             if (timeSinceKill < 0) timeSinceKill += 86400; 
+            
             if (killTimerEl) killTimerEl.innerText = formatDuration(timeSinceKill * 1000);
             
-            timeRemaining = 9000 - timeSinceKill; 
-            if (timeRemaining > 0) {
-                countdownEl.innerText = formatDuration(timeRemaining * 1000);
+            // 7200 sec = 2 hours, 18000 sec = 5 hours
+            const spawnIn = 7200 - timeSinceKill; 
+            timeRemaining = spawnIn; 
+            
+            if (spawnIn > 0) {
+                // Counting down to the 2-hour mark
+                countdownEl.innerText = formatDuration(spawnIn * 1000);
                 card.dataset.priority = "1";
-            } else {
+            } else if (timeSinceKill <= 18000) { 
+                // Between 2h and 5h
                 countdownEl.innerText = `In Window`;
-                countdownEl.classList.add('spawning');
-                card.dataset.priority = "0";
+                countdownEl.classList.add('spawning'); // Turns it Red
+                card.dataset.priority = "0"; // Pushes to the top
+            } else { 
+                // Past 5h mark
+                countdownEl.innerText = `Missed`;
+                card.dataset.priority = "2"; // Sinks it to the bottom
+                timeRemaining = 999999; // Prevents audio from triggering
             }
+
+        // --- STANDARD BOSS LOGIC ---
         } else {
-            timeRemaining = (targetSec + (86400 * activeOffset)) - nowSec;
-            if (timeRemaining > 0) {
-                countdownEl.innerText = isTimerOn ? formatDuration(timeRemaining * 1000) : `At: ${card.dataset.targetTime}`;
+            const diffSec = (targetSec + (86400 * activeOffset)) - nowSec;
+            timeRemaining = diffSec; 
+
+            if (diffSec > 0) {
+                countdownEl.innerText = isTimerOn ? formatDuration(diffSec * 1000) : `Announcement at: ${card.dataset.targetTime}`;
                 card.dataset.priority = "1";
-            } else if (timeRemaining <= 0 && timeRemaining > -300) { 
-                countdownEl.innerText = `Spawning in: ${formatDuration((300 + timeRemaining) * 1000)}`;
+            } else if (diffSec <= 0 && diffSec > -300) { 
+                countdownEl.innerText = `Spawning in: ${formatDuration((300 + diffSec) * 1000)}`;
                 countdownEl.classList.add('spawning');
                 card.dataset.priority = "0";
             } else {
@@ -341,19 +349,7 @@ function updateTimers(nowSec, activeOffset) {
             }
         }
 
-        // Overlay Logic: Find the closest boss FOR THIS SPECIFIC REGION
-        if (!hiddenRegions.includes(regionName) && timeRemaining > -300) {
-            if (!nextBossesPerRegion[regionName] || timeRemaining < nextBossesPerRegion[regionName].timeRemaining) {
-                nextBossesPerRegion[regionName] = {
-                    name: bName,
-                    timeRemaining: timeRemaining,
-                    text: countdownEl.innerText,
-                    isSpawning: timeRemaining <= 0
-                };
-            }
-        }
-
-        // Audio Logic
+        // --- AUDIO TRIGGER ---
         if (timeRemaining <= 300 && timeRemaining > -300) {
             if (isGlobalSoundOn && !mutedRegions.includes(regionName) && !window.notifiedBosses.has(spawnId)) {
                 alertAudio.play().catch(e => console.log("Audio play blocked by browser."));
@@ -364,47 +360,14 @@ function updateTimers(nowSec, activeOffset) {
         }
     });
 
-    // Handle UI Switching (Grid vs Overlay)
-    const grid = document.getElementById('timers-grid');
-    const overlay = document.getElementById('overlay-container');
-    const overlayWidget = document.getElementById('overlay-widget');
-
-    if (isOverlayMode) {
-        grid.style.display = 'none';
-        overlay.style.display = 'flex';
-        
-        overlayWidget.innerHTML = ''; // Clear the widget
-        
-        const regionsToDisplay = Object.keys(nextBossesPerRegion).sort();
-
-        if (regionsToDisplay.length > 0) {
-            regionsToDisplay.forEach(region => {
-                const boss = nextBossesPerRegion[region];
-                overlayWidget.innerHTML += `
-                    <div class="overlay-row">
-                        <div class="overlay-region-name">${region}</div>
-                        <div class="overlay-boss-name">${boss.name}</div>
-                        <div class="overlay-timer ${boss.isSpawning ? 'spawning' : ''}">${boss.text}</div>
-                    </div>
-                `;
-            });
-        } else {
-            overlayWidget.innerHTML = `<div style="text-align: center; color: var(--text-muted);">All Clear / No Visible Regions</div>`;
-        }
-    } else {
-        grid.style.display = 'flex';
-        overlay.style.display = 'none';
-        
-        // Auto-Sort Grid
-        document.querySelectorAll('.card-container').forEach(container => {
-            const cards = Array.from(container.children);
-            cards.sort((a, b) => {
-                if (a.dataset.priority !== b.dataset.priority) return a.dataset.priority - b.dataset.priority;
-                return parseInt(a.dataset.targetSec) - parseInt(b.dataset.targetSec);
-            });
-            cards.forEach(card => container.appendChild(card));
+    document.querySelectorAll('.card-container').forEach(container => {
+        const cards = Array.from(container.children);
+        cards.sort((a, b) => {
+            if (a.dataset.priority !== b.dataset.priority) return a.dataset.priority - b.dataset.priority;
+            return parseInt(a.dataset.targetSec) - parseInt(b.dataset.targetSec);
         });
-    }
+        cards.forEach(card => container.appendChild(card));
+    });
 }
 
 function formatDuration(ms) {
