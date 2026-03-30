@@ -3,10 +3,9 @@ const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQtRlBFHRViiLr
 // --- DECOUPLED MONARCH SETTINGS ---
 // Easily edit this array to change which bosses appear in the manual Monarch column
 const MONARCH_BOSSES = [
-    "Pinchy",
-    "Lycan",
-    "Profane Jiangshi",
-    "King Giganura"
+    "Monarch CH 1",
+    "Monarch CH 2",
+    "Monarch CH 3",
 ];
 
 // Global Variables
